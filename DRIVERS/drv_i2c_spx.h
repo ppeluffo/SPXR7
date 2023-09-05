@@ -15,8 +15,8 @@
 #include <util/twi.h>
 #include "FreeRTOS.h"
 #include "task.h"
-
 #include "pines.h"
+#include "xprintf.h"
 
 #define I2C_DIRECTION_BIT_WRITE 0
 #define I2C_DIRECTION_BIT_READ  1

@@ -30,7 +30,7 @@ void PORT_ConfigureInterrupt1( PORT_t * port,PORT_INT1LVL_t intLevel, uint8_t pi
 //#define IO_config_TICK()	PORT_SetPinAsOutput( &TICK_PORT, TICK_BITPOS)
 //#define IO_set_TICK()		PORT_SetOutputBit( &TICK_PORT, TICK_BITPOS)
 //#define IO_clr_TICK()		PORT_ClearOutputBit( &TICK_PORT, TICK_BITPOS)
-//------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // TWI PE0(SDA)/PE1(SCL)
 #define SCL_BITPOS		1
 #define SCL_PORT		PORTE
@@ -39,56 +39,23 @@ void PORT_ConfigureInterrupt1( PORT_t * port,PORT_INT1LVL_t intLevel, uint8_t pi
 #define IO_set_SCL()		PORT_SetOutputBit( &SCL_PORT, SCL_BITPOS)
 #define IO_clr_SCL()		PORT_ClearOutputBit( &SCL_PORT, SCL_BITPOS)
 
-//------------------------------------------------------------------------------------
-// LEDS
-
-#define LED_KA_BITPOS	7
-#define LED_KA_PORT		PORTF
-
-#define IO_config_LED_KA()	PORT_SetPinAsOutput( &LED_KA_PORT, LED_KA_BITPOS)
-#define IO_set_LED_KA()		PORT_SetOutputBit( &LED_KA_PORT, LED_KA_BITPOS)
-#define IO_clr_LED_KA()		PORT_ClearOutputBit( &LED_KA_PORT, LED_KA_BITPOS)
-
-#define LED_COMMS_BITPOS	1
-#define LED_COMMS_PORT		PORTF
-
-#define IO_config_LED_COMMS()	PORT_SetPinAsOutput( &LED_COMMS_PORT, LED_COMMS_BITPOS)
-#define IO_set_LED_COMMS()		PORT_SetOutputBit( &LED_COMMS_PORT, LED_COMMS_BITPOS)
-#define IO_clr_LED_COMMS()		PORT_ClearOutputBit( &LED_COMMS_PORT, LED_COMMS_BITPOS)
-
-//------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // ANALOG_IN: SENSOR VCC CONTROL
 
-#define SENS_12V_CTL_BITPOS	1
-#define SENS_12V_CTL_PORT	PORTA
+// Salida de prender/apagar sensores 4-20
+#define VSENSORS420_PORT         PORTA
+#define VSENSORS420              1
+#define VSENSORS420_PIN_bm       PIN1_bm
+#define VSENSORS420_PIN_bp       PIN1_bp
 
-#define IO_config_SENS_12V_CTL()	PORT_SetPinAsOutput( &SENS_12V_CTL_PORT, SENS_12V_CTL_BITPOS)
-#define IO_set_SENS_12V_CTL()		PORT_SetOutputBit( &SENS_12V_CTL_PORT, SENS_12V_CTL_BITPOS)
-#define IO_clr_SENS_12V_CTL()		PORT_ClearOutputBit( &SENS_12V_CTL_PORT, SENS_12V_CTL_BITPOS)
+#define SET_VSENSORS420()       ( VSENSORS420_PORT.OUT |= VSENSORS420_PIN_bm )
+//#define SET_VSENSORS420()		PORT_SetOutputBit( &VSENSORS420_PORT, VSENSORS420)
+#define CLEAR_VSENSORS420()     ( VSENSORS420_PORT.OUT &= ~VSENSORS420_PIN_bm )
+//#define CLEAR_VSENSORS420()		PORT_ClearOutputBit( &VSENSORS420_PORT, VSENSORS420)
 
-//------------------------------------------------------------------------------------
-// TERMINAL CONTROL PIN
+void VSENSORS420_init(void);
+//#define VSENSORS420_init()	PORT_SetPinAsOutput( &VSENSORS420_PORT, VSENSORS420_PIN_bm)
 
-#define TERMCTL_PIN_BITPOS			4
-#define TERMCTL_PIN_PORT			PORTF
-
-#define IO_config_TERMCTL_PIN()		PORT_SetPinAsInput( &TERMCTL_PIN_PORT, TERMCTL_PIN_BITPOS)
-#define IO_config_TERMCTL_PULLDOWN()  PORTF.PIN4CTRL = PORT_OPC_PULLDOWN_gc
-
-uint8_t IO_read_TERMCTL_PIN(void);
-
-//------------------------------------------------------------------------------------
-// BAUD RATE SELECTOR
-
-#define BAUD_PIN_BITPOS		6
-#define BAUD_PIN_PORT		PORTF
-
-#define IO_config_BAUD_PIN()		PORT_SetPinAsInput( &BAUD_PIN_PORT, BAUD_PIN_BITPOS)
-uint8_t IO_read_BAUD_PIN(void);
-
-#define BAUD_PIN_115200() ( (IO_read_BAUD_PIN() == 1) ? true : false )
-
-//------------------------------------------------------------------------------------
 // ENTRADAS DIGITALES ( SOLO EN SPX_5CH ya que el otro usa el MCP )
 // Solo niveles logicos
 
@@ -104,28 +71,7 @@ uint8_t IO_read_BAUD_PIN(void);
 uint8_t IO_read_PA0(void);
 uint8_t IO_read_PB7(void);
 
-//------------------------------------------------------------------------------------
-// ENTRADAS DIGITALES DE LOS CONTADORES
-
-// contadores(interrupciones)
-#define CLR_D_BITPOS	3
-#define CLR_D_PORT		PORTB
-
-#define PB2_BITPOS		2
-#define PB2_PORT		PORTB
-#define PB2_PINMASK		0x02
-
-#define PA2_BITPOS		2
-#define PA2_PORT		PORTA
-#define PA2_PINMASK		0x04
-
-void IO_config_PB2(void);
-void IO_config_PA2(void);
-
-uint8_t IO_read_PB2(void);
-uint8_t IO_read_PA2(void);
-
-//------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // OUTPUTS 8814 CONTROL
 
 #define ENB_BITPOS			0

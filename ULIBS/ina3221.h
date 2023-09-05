@@ -10,7 +10,6 @@
 
 #include "frtos-io.h"
 #include "stdint.h"
-
 #include "i2c.h"
 #include "xprintf.h"
 

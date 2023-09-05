@@ -8,13 +8,17 @@
 #ifndef SRC_SPX_LIBS_L_NVM_L_NVM_H_
 #define SRC_SPX_LIBS_L_NVM_L_NVM_H_
 
-#include "nvm.h"
 
-struct nvm_device_serial xmega_id;
-struct nvm_device_id xmega_device_id;
+#include "frtos-io.h"
+#include "stdio.h"
+#include "xprintf.h"
 
-char *NVMEE_readID( void );
+char *NVMEE_read_serial( void );
 char *NVMEE_read_device_ID( void );
+
+int16_t NVMEE_read  ( uint16_t dataAddress, char *data, uint8_t data_length );
+int16_t NVMEE_write ( uint16_t dataAddress, char *data, uint8_t data_length );
+
 void NVMEE_test_read( char *addr, char *size );
 void NVMEE_test_write( char *addr, char *str );
 

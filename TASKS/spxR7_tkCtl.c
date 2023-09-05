@@ -24,6 +24,16 @@ void tkCtl(void * pvParameters)
 	vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     xprintf_P(PSTR("Starting tkCtl..\r\n"));
     
+    // Leo la configuracion de EE en systemConf
+    if ( ! load_config_from_NVM())  {
+       xprintf_P(PSTR("Loading config default..\r\n"));
+       config_default();
+    }
+       
+    // Actualizo las configuraciones locales en el systemConf
+    ainputs_update_local_config(&systemConf.ainputs_conf);
+    counters_update_local_config(&systemConf.counters_conf);
+    
     // Funciones que se inician con el RTOS corriendo
     RTC_init();
     

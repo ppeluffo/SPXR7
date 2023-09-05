@@ -30,27 +30,38 @@ int16_t xReturn = 0U;
 uint8_t i2c_error_code = 0;
    
 
-    //xprintf_P(PSTR("I2C_write: devAddress=0x%02X, dataAddress=0x%02X, dataAddressLength=%d, dataLength=%d\r\n"), devAddress,dataAddress,dataAddress_length,data_length);
+    if ( f_debug_TWI0  ) 
+        xprintf_P(PSTR("I2C_write: devAddress=0x%02X, dataAddress=0x%02X, dataAddressLength=%d, dataLength=%d\r\n"), devAddress,dataAddress,dataAddress_length,data_length);
 
     frtos_ioctl( fdTWI, ioctl_OBTAIN_BUS_SEMPH, NULL);
     
     // Prendo el debug
-    if ( f_debug_TWI0  ) 
+    if ( f_debug_TWI0  ) {
         frtos_ioctl( fdTWI, ioctl_I2C_SET_DEBUG, NULL);
+        //xprintf_P(PSTR("I2C_write: f_debug_TWI0=True\r\n"));
+    }
     
 	// 1) Indicamos el periferico i2c en el cual queremos escribir ( variable de 8 bits !!! )
 	frtos_ioctl( fdTWI, ioctl_I2C_SET_DEVADDRESS, &devAddress );
+    if ( f_debug_TWI0  ) 
+        xprintf_P(PSTR("I2C_write: SET_DEVADDRESS=0x%02X\r\n"),devAddress);
 
  	// 2) Indicamos al direccion interna del chip donde comenzar a escribir
 	frtos_ioctl( fdTWI, ioctl_I2C_SET_DATAADDRESS, &dataAddress );
-	frtos_ioctl( fdTWI, ioctl_I2C_SET_DATAADDRESSLENGTH, &dataAddress_length );
-
+    if ( f_debug_TWI0  ) 
+        xprintf_P(PSTR("I2C_write: SET_DATAADDRESS=0x%02X\r\n"),dataAddress);
+    
+    frtos_ioctl( fdTWI, ioctl_I2C_SET_DATAADDRESSLENGTH, &dataAddress_length );
+    if ( f_debug_TWI0  ) 
+        xprintf_P(PSTR("I2C_write: SET_DATAADDRESSLENGTH=0x%02X\r\n"),dataAddress_length);
+    
 	// 3) Por ultimo escribimos. No controlo fronteras.
 	xReturn = frtos_write( fdTWI, data, data_length);
 
  	// 4) Controlo errores
 	i2c_error_code = frtos_ioctl( fdTWI, ioctl_I2C_GET_LAST_ERROR, NULL );
 	if (i2c_error_code != I2C_OK ) {
+        xprintf_P(PSTR("I2C_write: ERROR [%d]\r\n"), i2c_error_code);
 		xReturn = -1;
 	}
     
@@ -96,10 +107,12 @@ uint8_t i2c_error_code = 0;
 	// 4) Controlo errores.
 	i2c_error_code = frtos_ioctl( fdTWI, ioctl_I2C_GET_LAST_ERROR, NULL );
 	if (i2c_error_code != I2C_OK ) {
+        xprintf_P(PSTR("I2C_write: ERROR [%d]\r\n"), i2c_error_code);
 		xReturn = -1;
 	}
 
 	if (xReturn != data_length ) {
+        xprintf_P(PSTR("I2C_write: ERROR dlength[%d,%d]\r\n"), xReturn, data_length);
 		xReturn = -1;
 	}
 

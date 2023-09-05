@@ -7,7 +7,7 @@
 
 #include "spxR7.h"
 
-//------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 int main( void )
 {
     
@@ -15,16 +15,15 @@ int main( void )
 
 	frtos_open(fdTERM, 9600 );
     frtos_open(fdI2C0, 100 );
-
-	// Creo los semaforos
-	sem_SYSVars = xSemaphoreCreateMutexStatic( &SYSVARS_xMutexBuffer );
-
+    frtos_open(fdNVM,0);
+    
 	// Creamos las tareas
 	run_tasks = false;
 
 	xHandle_tkCtl = xTaskCreateStatic(tkCtl, "CTL", tkCtl_STACK_SIZE, (void *)1, tkCtl_TASK_PRIORITY, xTask_Ctl_Buffer, &xTask_Ctl_Buffer_Ptr );
     xHandle_tkCmd = xTaskCreateStatic( tkCmd, "CMD", tkCmd_STACK_SIZE, (void *)1, tkCmd_TASK_PRIORITY, xTask_Cmd_Buffer, &xTask_Cmd_Buffer_Ptr );
-
+    xHandle_tkSys = xTaskCreateStatic( tkSys, "SYS", tkSys_STACK_SIZE, (void *)1, tkSys_TASK_PRIORITY, xTask_Sys_Buffer, &xTask_Sys_Buffer_Ptr );
+   
 	/* Arranco el RTOS. */
 	vTaskStartScheduler();
 
@@ -93,7 +92,7 @@ static StackType_t uxIdleTaskStack[ configMINIMAL_STACK_SIZE ];
     configMINIMAL_STACK_SIZE is specified in words, not bytes. */
     *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
 }
-//------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize )
 {
 /* If the buffers to be provided to the Timer task are declared inside this
@@ -114,5 +113,6 @@ static StackType_t uxTimerTaskStack[ configTIMER_TASK_STACK_DEPTH ];
 	configMINIMAL_STACK_SIZE is specified in words, not bytes. */
 	*pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
 }
-//------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
 

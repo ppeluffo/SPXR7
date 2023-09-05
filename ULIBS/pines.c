@@ -8,21 +8,16 @@
 #include "pines.h"
 #include "bytes.h"
 
-//------------------------------------------------------------------------------------
-// TERMINAL CONTROL PIN
 
-uint8_t IO_read_TERMCTL_PIN(void)
+// -----------------------------------------------------------------------------
+void VSENSORS420_init(void)
 {
-	return( PORT_GetBitValue(&TERMCTL_PIN_PORT, TERMCTL_PIN_BITPOS));
+    // Configura el pin del SENSORS420 como output
+	VSENSORS420_PORT.DIR |= VSENSORS420_PIN_bm;	
+	CLEAR_VSENSORS420();
 }
-//------------------------------------------------------------------------------------
-// BAUD RATE SELECTOR
 
-uint8_t IO_read_BAUD_PIN(void)
-{
-	return( PORT_GetBitValue(&BAUD_PIN_PORT, BAUD_PIN_BITPOS));
-}
-//------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // ENTRADAS DIGITALES ( SOLO EN SPX_5CH ya que el otro usa el MCP )
 
 uint8_t IO_read_PA0(void)
@@ -33,42 +28,6 @@ uint8_t IO_read_PA0(void)
 uint8_t IO_read_PB7(void)
 {
 	return( PORT_GetBitValue(&PB7_PORT, PB7_BITPOS));
-}
-//------------------------------------------------------------------------------------
-// CONTADORES
-
-void IO_config_PB2(void)
-{
-	// ( PB2 ) se utiliza para generar una interrupcion por flanco por lo tanto
-	// hay que configurarlo.
-
-	PORT_SetPinAsInput( &PB2_PORT, PB2_BITPOS);
-//	PB2_PORT.PIN2CTRL = 0x01;	// sense rising edge
-//	PB2_PORT.INTCTRL = 0x01;	// Dispara la interrupcion 0.
-//	PB2_PORT.INT0MASK = 0x04;	// Asocio el pin 2 a dicha interrupcion
-}
-//------------------------------------------------------------------------------------
-void IO_config_PA2(void)
-{
-	// ( PA2 ) se utiliza para generar una interrupcion por flanco por lo tanto
-	// hay que configurarlo.
-
-	PORT_SetPinAsInput( &PA2_PORT, PA2_BITPOS);
-//	PA2_PORT.PIN2CTRL = 0x01;	// sense rising edge
-//	PA2_PORT.INTCTRL = 0x01;	// Dispara la interrupcion 0 con level 1
-//	PA2_PORT.INT0MASK = 0x04;	// Asocio el pin 2 a dicha interrupcion
-
-
-}
-//------------------------------------------------------------------------------------
-uint8_t IO_read_PB2(void)
-{
-	return( PORT_GetBitValue(&PB2_PORT, PB2_BITPOS));
-}
-//------------------------------------------------------------------------------------
-uint8_t IO_read_PA2(void)
-{
-	return( PORT_GetBitValue(&PA2_PORT, PA2_BITPOS));
 }
 //------------------------------------------------------------------------------------
 // GPRS

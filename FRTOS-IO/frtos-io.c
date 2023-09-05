@@ -37,6 +37,9 @@ int16_t xRet = -1;
     case fdI2C0:
 		xRet = frtos_open_i2c( &xBusI2C0, fd, &I2C0_xMutexBuffer, flags );
 		break;
+    case fdNVM:
+		xRet = frtos_open_nvm( &xNVM, fd, &NVM_xMutexBuffer, flags );
+		break;
 	default:
 		break;
 	}
@@ -61,6 +64,9 @@ int16_t xRet = -1;
 		break;
     case fdI2C0:
         xRet = frtos_ioctl_i2c( &xBusI2C0, ulRequest, pvValue );
+        break;
+    case fdNVM:
+        xRet = frtos_ioctl_nvm( &xNVM, ulRequest, pvValue );
         break;
     default:
 		break;
@@ -87,6 +93,9 @@ int16_t xRet = -1;
     case fdI2C0:
 		xRet = frtos_write_i2c( &xBusI2C0, pvBuffer, xBytes );
 		break;
+    case fdNVM:
+		xRet = frtos_write_nvm( &xNVM, pvBuffer, xBytes );
+		break;
 	default:
 		break;
 	}
@@ -111,6 +120,9 @@ int16_t xRet = -1;
 		break;
     case fdI2C0:
 		xRet = frtos_read_i2c( &xBusI2C0, pvBuffer, xBytes );
+		break;
+    case fdNVM:
+		xRet = frtos_read_nvm( &xNVM, pvBuffer, xBytes );
 		break;
 	default:
 		break;
@@ -287,12 +299,17 @@ int16_t frtos_read_i2c( periferico_i2c_port_t *xI2c, char *pvBuffer, const uint1
 
 int16_t xReturn = 0U;
 
+    //frtos_ioctl( xI2c->fd, ioctl_OBTAIN_BUS_SEMPH, NULL);
+    
 	if ( ( xReturn = drv_I2C_master_read(xI2c->devAddress, xI2c->dataAddress, xI2c->dataAddress_length, (char *)pvBuffer, xBytes)) > 0 ) {
 		xI2c->i2c_error_code = I2C_OK;
 	} else {
 		// Error de escritura indicado por el driver.
 		xI2c->i2c_error_code = I2C_RD_ERROR;
 	}
+    
+    //frtos_ioctl( xI2c->fd, ioctl_RELEASE_BUS_SEMPH, NULL);
+    
     return(xReturn);
 }
 //------------------------------------------------------------------------------
@@ -301,6 +318,8 @@ int16_t frtos_write_i2c( periferico_i2c_port_t *xI2c, const char *pvBuffer, cons
 
 int16_t xReturn = 0U;
 
+    //frtos_ioctl( xI2c->fd, ioctl_OBTAIN_BUS_SEMPH, NULL);
+    
 	if ( ( xReturn = drv_I2C_master_write( xI2c->devAddress, xI2c->dataAddress, xI2c->dataAddress_length, (char *)pvBuffer, xBytes) ) > 0 ) {
 		xI2c->i2c_error_code = I2C_OK;
 	} else {
@@ -308,7 +327,91 @@ int16_t xReturn = 0U;
 		xI2c->i2c_error_code = I2C_WR_ERROR;
 	}
 
+    //frtos_ioctl( xI2c->fd, ioctl_RELEASE_BUS_SEMPH, NULL);
+    
 	return(xReturn);
+
+}
+//------------------------------------------------------------------------------
+// FUNCIONES ESPECIFICAS DE NVM
+//------------------------------------------------------------------------------
+int16_t frtos_open_nvm( periferico_nvm_t *xNVM, file_descriptor_t fd, StaticSemaphore_t *nvm_semph, uint32_t flags)
+{
+	// Asigno las funciones particulares ed write,read,ioctl
+	xNVM->fd = fd;
+	xNVM->xBusSemaphore = xSemaphoreCreateMutexStatic( nvm_semph );
+	xNVM->xBlockTime = (10 / portTICK_PERIOD_MS );
+	//
+	return(1);
+}
+//------------------------------------------------------------------------------
+int16_t frtos_ioctl_nvm( periferico_nvm_t *xNVM, uint32_t ulRequest, void *pvValue )
+{
+
+int16_t xReturn = 0;
+    
+uint32_t *p = NULL;
+
+	p = pvValue;
+
+	switch( ulRequest )
+	{
+		case ioctl_OBTAIN_BUS_SEMPH:
+			// Espero el semaforo en forma persistente.
+			while ( xSemaphoreTake(xNVM->xBusSemaphore, ( TickType_t ) 5 ) != pdTRUE )
+				taskYIELD();
+			break;
+        case ioctl_RELEASE_BUS_SEMPH:
+			xSemaphoreGive( xNVM->xBusSemaphore );
+			break;
+		case ioctl_SET_TIMEOUT:
+			xNVM->xBlockTime = *p;
+			break;
+		case ioctl_NVM_SET_EEADDRESS:
+			xNVM->eeAddress = *p;
+			break; 
+        case ioctl_NVM_SET_OPERATION:
+            xNVM->nvm_operation = *p;
+            break;
+		default :
+			xReturn = -1;
+			break;
+		}
+
+	return xReturn;
+
+}
+//------------------------------------------------------------------------------
+int16_t frtos_read_nvm( periferico_nvm_t *xNVM, char *pvBuffer, const uint16_t xBytes )
+{
+
+int16_t xReturn = xBytes;
+
+    //xprintf_P(PSTR("NVM code = %d\r\n"),xNVM->nvm_operation );
+    //frtos_ioctl( xNVM->fd, ioctl_OBTAIN_BUS_SEMPH, NULL);
+    switch( xNVM->nvm_operation) {
+        case NVM_READ_SERIAL:
+            nvm_read_device_serial( (void *)pvBuffer );
+            break;
+        case NVM_READ_ID:
+            nvm_read_device_id( (void *)pvBuffer );
+            break;
+        case NVM_READ_BUFFER:
+            nvm_eeprom_read_buffer( xNVM->eeAddress, (uint8_t *)pvBuffer, xBytes );
+            break;
+    }
+    
+    //frtos_ioctl( xNVM->fd, ioctl_RELEASE_BUS_SEMPH, NULL);
+    return(xReturn);
+}
+//------------------------------------------------------------------------------
+int16_t frtos_write_nvm( periferico_nvm_t *xNVM, const char *pvBuffer, const uint16_t xBytes )
+{
+
+    //frtos_ioctl( xNVM->fd, ioctl_OBTAIN_BUS_SEMPH, NULL);
+    nvm_eeprom_erase_and_write_buffer( xNVM->eeAddress, (uint8_t *)pvBuffer, xBytes);
+    //frtos_ioctl( xNVM->fd, ioctl_RELEASE_BUS_SEMPH, NULL);
+    return(xBytes);
 
 }
 //------------------------------------------------------------------------------

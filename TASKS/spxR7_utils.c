@@ -29,6 +29,13 @@ void system_init_outofrtos(void)
 	LED_init();
     XPRINTF_init();
     I2C_init();
+    
+    // Creo los semaforos
+	sem_SYSVars = xSemaphoreCreateMutexStatic( &SYSVARS_xMutexBuffer );
+
+    ainputs_init_outofrtos(sem_SYSVars);
+    counters_init_outofrtos(sem_SYSVars);
+    
 }
 //------------------------------------------------------------------------------
 void configure_systemMainClock(void)
@@ -188,6 +195,228 @@ void reset(void)
 	/* Issue a Software Reset to initilize the CPU */
 	CCPWrite( &RST.CTRL, RST_SWRST_bm );   /* Issue a Software Reset to initilize the CPU */
                                            
+}
+//------------------------------------------------------------------------------
+void config_default(void)
+{
+
+    // Configuro a default todas las configuraciones locales
+    // y luego actualizo el systemConf
+      
+    systemConf.timerpoll = 60;
+    systemConf.timerdial = 0;
+    
+    systemConf.samples_count = 1;
+    
+    systemConf.pwr_modo = PWR_CONTINUO;
+    systemConf.pwr_hhmm_on = 2330;
+    systemConf.pwr_hhmm_off = 630;
+ 
+    // Actualizo las configuraciones locales a default
+    ainputs_config_defaults();
+    counters_config_defaults();
+     
+    // Actualizo las configuraciones locales en el systemConf
+    ainputs_read_local_config(&systemConf.ainputs_conf);
+    counters_read_local_config(&systemConf.counters_conf);
+     
+}
+//------------------------------------------------------------------------------
+bool config_debug( char *tipo, char *valor)
+{
+    /*
+     * Configura las flags de debug para ayudar a visualizar los problemas
+     */
+    
+    if (!strcmp_P( strupr(tipo), PSTR("NONE")) ) {
+        ainputs_config_debug(false);
+        return(true); 
+    }
+
+    if (!strcmp_P( strupr(tipo), PSTR("ANALOG")) ) {
+        if (!strcmp_P( strupr(valor), PSTR("TRUE")) ) {
+            ainputs_config_debug(true);
+            return(true);
+        }
+        if (!strcmp_P( strupr(valor), PSTR("FALSE")) ) {
+            ainputs_config_debug(false);
+            return(true);
+        }
+    }
+
+    if (!strcmp_P( strupr(tipo), PSTR("COUNTERS")) ) {
+        if (!strcmp_P( strupr(valor), PSTR("TRUE")) ) {
+            counters_config_debug(true);
+            return(true);
+        }
+        if (!strcmp_P( strupr(valor), PSTR("FALSE")) ) {
+            counters_config_debug(false);
+            return(true);
+        }
+    }
+    return(false);
+    
+}
+//------------------------------------------------------------------------------
+bool save_config_in_NVM(void)
+{
+   
+int8_t retVal;
+uint8_t cks;
+
+
+    // Actualizo las configuraciones locales en systemConf
+    ainputs_read_local_config(&systemConf.ainputs_conf);
+    counters_read_local_config(&systemConf.counters_conf);
+    
+    cks = checksum ( (uint8_t *)&systemConf, ( sizeof(systemConf) - 1));
+    systemConf.checksum = cks;    
+    retVal = NVMEE_write( 0x00, (char *)&systemConf, sizeof(systemConf) );
+    
+    //xprintf_P(PSTR("DEBUG: Save in NVM OK\r\n"));
+    
+    if (retVal == -1 ) {
+        xprintf_P( PSTR("ERROR: Save_config_NVM\r\n"));
+		return(false);
+    }
+    
+    return(true);
+   
+}
+//------------------------------------------------------------------------------
+bool load_config_from_NVM(void)
+{
+
+uint8_t rd_cks, calc_cks;
+    
+    NVMEE_read( 0x00, (char *)&systemConf, sizeof(systemConf) );
+    rd_cks = systemConf.checksum;
+    
+    calc_cks = checksum ( (uint8_t *)&systemConf, ( sizeof(systemConf) - 1)); 
+    if ( calc_cks != rd_cks ) {
+		xprintf_P( PSTR("ERROR: Checksum systemVars failed: calc[0x%0x], read[0x%0x]\r\n"), calc_cks, rd_cks );
+		return(false);
+	}
+    
+    // Actualizo las configuraciones locales en el systemConf
+    ainputs_update_local_config(&systemConf.ainputs_conf);
+    counters_update_local_config(&systemConf.counters_conf);
+    
+    return(true);
+}
+//------------------------------------------------------------------------------
+uint8_t checksum( uint8_t *s, uint16_t size )
+{
+	/*
+	 * Recibe un puntero a una estructura y un tamaño.
+	 * Recorre la estructura en forma lineal y calcula el checksum
+	 */
+
+uint8_t *p = NULL;
+uint8_t cks = 0;
+uint16_t i = 0;
+
+	cks = 0;
+	p = s;
+	for ( i = 0; i < size ; i++) {
+		 cks = (cks + (int)(p[i])) % 256;
+	}
+
+	return(cks);
+}
+//------------------------------------------------------------------------------
+bool config_timerdial ( char *s_timerdial )
+{
+	// El timer dial puede ser 0 si vamos a trabajar en modo continuo o mayor a
+	// 15 minutos.
+	// Es una variable de 32 bits para almacenar los segundos de 24hs.
+
+uint16_t l_timerdial;
+    
+    l_timerdial = atoi(s_timerdial);
+    if ( (l_timerdial > 0) && (l_timerdial < TDIAL_MIN_DISCRETO ) ) {
+        xprintf_P( PSTR("TDIAL warn: continuo TDIAL=0, discreto TDIAL >= 900)\r\n"));
+        l_timerdial = TDIAL_MIN_DISCRETO;
+    }
+    
+	systemConf.timerdial = atoi(s_timerdial);
+	return(true);
+}
+//------------------------------------------------------------------------------
+bool config_timerpoll ( char *s_timerpoll )
+{
+	// Configura el tiempo de poleo.
+	// Se utiliza desde el modo comando como desde el modo online
+	// El tiempo de poleo debe estar entre 15s y 3600s
+
+
+	systemConf.timerpoll = atoi(s_timerpoll);
+
+	if ( systemConf.timerpoll < 15 )
+		systemConf.timerpoll = 15;
+
+	if ( systemConf.timerpoll > 3600 )
+		systemConf.timerpoll = 300;
+
+	return(true);
+}
+//------------------------------------------------------------------------------
+bool config_samples ( char *s_samples )
+{
+	// Configura el numero de muestras de c/poleo.
+	// Debe ser mayor a 1 y menor a 20.
+
+
+	systemConf.samples_count= atoi(s_samples);
+
+	if ( systemConf.samples_count < 1 ) {
+		systemConf.samples_count = 1;
+        xprintf_P(PSTR("ALERT: samples default to 1 !!!\r\n"));
+    }
+    
+
+	if ( systemConf.samples_count > 10 ) {
+		systemConf.samples_count = 10;
+        xprintf_P(PSTR("ALERT: samples default to 10 !!!\r\n"));
+    }
+
+	return(true);
+}
+//------------------------------------------------------------------------------
+void xprint_dr(dataRcd_s *dr)
+{
+    /*
+     * Imprime en pantalla el dataRcd pasado
+     */
+    
+uint8_t i, channel;
+
+
+//    xprintf_P( PSTR("ID:%s;TYPE:%s;VER:%s;"), systemConf.dlgid, FW_TYPE, FW_REV);
+ 
+    // Clock
+    xprintf_P( PSTR("DATE:%02d%02d%02d;"), dr->rtc.year, dr->rtc.month, dr->rtc.day );
+    xprintf_P( PSTR("TIME:%02d%02d%02d;"), dr->rtc.hour, dr->rtc.min, dr->rtc.sec);
+    
+    // Analog Channels:
+    for ( i=0; i < NRO_ANALOG_CHANNELS; i++) {
+        //if ( strcmp ( systemConf.ainputs_conf[channel].name, "X" ) != 0 ) {
+        if ( systemConf.ainputs_conf.channel[i].enabled ) {
+            xprintf_P( PSTR("%s:%0.2f;"), systemConf.ainputs_conf.channel[i].name, dr->l_ainputs[i]);
+        }
+    }
+   
+    // Counter Channels:
+    for ( channel=0; channel < NRO_COUNTER_CHANNELS; channel++) {
+        if ( strcmp ( systemConf.counters_conf.channel[channel].name, "X" ) != 0 ) {
+            xprintf_P( PSTR("%s:%0.3f;"), systemConf.counters_conf.channel[channel].name, dr->l_counters[channel]);
+        }
+    }
+
+    // Battery
+    xprintf_P( PSTR("bt:%0.2f;"), dr->battery);
+    
+    xprintf_P( PSTR("\r\n"));
 }
 //------------------------------------------------------------------------------
 

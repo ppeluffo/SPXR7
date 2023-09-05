@@ -34,6 +34,7 @@ uint16_t start_address;
     xprintf_P(PSTR("EETEST_WRITE: start_address=0x%04x\r\n"), start_address);
 
     if ((strcmp_P( strupr(debug), PSTR("DEBUG")) == 0) ) {
+        xprintf_P(PSTR("DEBUG I2C ON\r\n"));
         xBytes = EE_write( start_address, str, length, EE_DEBUG_ON );
     } else {
         xBytes = EE_write( start_address, str, length, EE_DEBUG_OFF );

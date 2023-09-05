@@ -28,14 +28,16 @@
 
 #include "drv_i2c_spx.h"
 #include "drv_uart_spx.h"
-
+#include "drv_nvmee_spx.h"
 
 // Identificador de los file descriptor.
 typedef enum {
 	fdTERM = 0,
 	fdXCOMMS,
     fdRS485A,
-	fdI2C0,  
+	fdI2C0,
+    fdNVM,
+            
 } file_descriptor_t;
 
 // Estructuctura generica de un periferico tipo bus i2c.
@@ -52,6 +54,18 @@ typedef struct {
 periferico_i2c_port_t xBusI2C0;
 
 StaticSemaphore_t I2C0_xMutexBuffer;
+
+typedef struct {
+	file_descriptor_t fd;
+    uint8_t nvm_operation;
+	SemaphoreHandle_t xBusSemaphore;		//
+	uint8_t xBlockTime;						// ticks to block in read operations. Set by ioctl
+    uint16_t eeAddress;                     // Start address for read/write
+} periferico_nvm_t;
+
+periferico_nvm_t xNVM;
+
+StaticSemaphore_t NVM_xMutexBuffer;
 
 #define ioctl_OBTAIN_BUS_SEMPH			1
 #define ioctl_RELEASE_BUS_SEMPH			2
@@ -80,6 +94,14 @@ StaticSemaphore_t I2C0_xMutexBuffer;
 #define ioctl_I2C_CLEAR_DEBUG           27
 #define ioctl_I2C_RESET                 28
 
+#define ioctl_NVM_SET_EEADDRESS         30
+#define ioctl_NVM_SET_OPERATION         31
+
+#define NVM_READ_ID         1
+#define NVM_READ_SERIAL     2
+#define NVM_READ_BUFFER     3 
+#define NVM_WRITE_BUFFER    4
+
 #define I2C_OK			0
 #define I2C_RD_ERROR	1
 #define I2C_WR_ERROR	2
@@ -87,18 +109,22 @@ StaticSemaphore_t I2C0_xMutexBuffer;
 int16_t frtos_open( file_descriptor_t fd, uint32_t flags);
 void frtos_open_uart2( uint32_t baudrate);
 int16_t frtos_open_i2c( periferico_i2c_port_t *xI2c, file_descriptor_t fd, StaticSemaphore_t *i2c_semph, uint32_t flags);
+int16_t frtos_open_nvm( periferico_nvm_t *xNVM, file_descriptor_t fd, StaticSemaphore_t *i2c_semph, uint32_t flags);
 
 int16_t frtos_ioctl( file_descriptor_t fd, uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_uart2( uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_i2c( periferico_i2c_port_t *xI2c, uint32_t ulRequest, void *pvValue );
+int16_t frtos_ioctl_nvm( periferico_nvm_t *xNVM, uint32_t ulRequest, void *pvValue );
 
 int16_t frtos_write( file_descriptor_t fd ,const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_uart2( const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_i2c( periferico_i2c_port_t *xI2c, const char *pvBuffer, const uint16_t xBytes );
+int16_t frtos_write_nvm( periferico_nvm_t *xNVM, const char *pvBuffer, const uint16_t xBytes );
 
 int16_t frtos_read( file_descriptor_t fd , char *pvBuffer, uint16_t xBytes );
 int16_t frtos_read_uart2( char *pvBuffer, uint16_t xBytes );
 int16_t frtos_read_i2c( periferico_i2c_port_t *xI2c, char *pvBuffer, const uint16_t xBytes );
+int16_t frtos_read_nvm( periferico_nvm_t *xNVM, char *pvBuffer, const uint16_t xBytes );
 
 
 #endif /* SRC_FRTOS_IO_FRTOS_IO_H_ */

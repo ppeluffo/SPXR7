@@ -123,11 +123,11 @@ int xReturn = -1;
 uint8_t packet[3];
 
     if ( drv_i2c_debug_flag ) {
-		xprintf( "drv_I2C_master_write: START\r\n");
-        xprintf( "  devAddr=%02X\r\n",devAddress);
-        xprintf( "  dataAddr=%04X\r\n",dataAddress );
-        xprintf( "  dataAddrLength=%d\r\n",dataAddress_length );
-        xprintf( "  bytes2write=%d\r\n", xBytes );
+		xprintf( PSTR("drv_I2C_master_write: START\r\n"));
+        xprintf( PSTR("  devAddr=%02X\r\n"),devAddress);
+        xprintf( PSTR("  dataAddr=%04X\r\n"),dataAddress );
+        xprintf( PSTR("  dataAddrLength=%d\r\n"),dataAddress_length );
+        xprintf( PSTR("  bytes2write=%d\r\n"), xBytes );
 	}
 
 	// Paso 1: PONER EL BUS EN CONDICIONES
@@ -164,7 +164,7 @@ i2c_quit:
 	TWIE.MASTER.CTRLC = TWI_MASTER_CMD_STOP_gc;
 
     if ( drv_i2c_debug_flag ) {
-        xprintf("STOP\r\n");
+        xprintf(PSTR("STOP\r\n"));
     }
 
 	// En caso de error libero la interface forzando el bus al estado IDLE
@@ -222,7 +222,8 @@ uint8_t packet[3];
 	if ( ! pv_i2c_rcvd_Data_packet( (uint8_t *)pvBuffer, xBytes )) goto i2c_quit;
 
     // Pass5: STOP
-	TWIE.MASTER.CTRLC = TWI_MASTER_CMD_STOP_gc;
+    // No lleva porque ya mande un NACK. Si lo pongo el proximo read me va a dar error !!!
+	//TWIE.MASTER.CTRLC = TWI_MASTER_CMD_STOP_gc;
     
     if ( drv_i2c_debug_flag ) {
         xprintf("STOP\r\n");
@@ -260,6 +261,7 @@ bool ret_code = false;
 	}
 
     // Esto genera un START y se envia el devAddress
+    // Ademas borra cualquier BUSERR que hubiese.
 	TWIE.MASTER.ADDR = txbyte;
 	if ( ! pv_i2c_waitForComplete() ) goto i2c_exit;
 
@@ -279,6 +281,10 @@ bool ret_code = false;
 	}
 
 i2c_exit:
+
+    if ( ret_code == false) {
+        xprintf("pv_i2c_send_Address_packet ERROR: ST=0x%02x\r\n", TWIE.MASTER.STATUS );
+    }
 
     // DEBUG
     if ( drv_i2c_debug_flag ) {
@@ -429,6 +435,10 @@ uint8_t i;
 
 i2c_quit:
 
+    if ( retS == false) {
+        xprintf("pv_i2c_rcvd_Data_packet ERROR: ST=0x%02x\r\n", TWIE.MASTER.STATUS );
+    }
+
     // DEBUG
     if ( drv_i2c_debug_flag ) {
          xprintf_P(PSTR("\r\n"));
@@ -492,6 +502,8 @@ bool retS = false;
 	}
 
 	retS = false;
+    xprintf("pv_i2c_waitForComplete ERROR: ST=0x%02x\r\n", TWIE.MASTER.STATUS );
+
 
 quit:
 
