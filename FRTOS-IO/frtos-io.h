@@ -107,21 +107,25 @@ StaticSemaphore_t NVM_xMutexBuffer;
 #define I2C_WR_ERROR	2
 
 int16_t frtos_open( file_descriptor_t fd, uint32_t flags);
+void frtos_open_uart1( uint32_t baudrate);
 void frtos_open_uart2( uint32_t baudrate);
 int16_t frtos_open_i2c( periferico_i2c_port_t *xI2c, file_descriptor_t fd, StaticSemaphore_t *i2c_semph, uint32_t flags);
 int16_t frtos_open_nvm( periferico_nvm_t *xNVM, file_descriptor_t fd, StaticSemaphore_t *i2c_semph, uint32_t flags);
 
 int16_t frtos_ioctl( file_descriptor_t fd, uint32_t ulRequest, void *pvValue );
+int16_t frtos_ioctl_uart1( uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_uart2( uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_i2c( periferico_i2c_port_t *xI2c, uint32_t ulRequest, void *pvValue );
 int16_t frtos_ioctl_nvm( periferico_nvm_t *xNVM, uint32_t ulRequest, void *pvValue );
 
 int16_t frtos_write( file_descriptor_t fd ,const char *pvBuffer, const uint16_t xBytes );
+int16_t frtos_write_uart1( const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_uart2( const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_i2c( periferico_i2c_port_t *xI2c, const char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_write_nvm( periferico_nvm_t *xNVM, const char *pvBuffer, const uint16_t xBytes );
 
 int16_t frtos_read( file_descriptor_t fd , char *pvBuffer, uint16_t xBytes );
+int16_t frtos_read_uart1( char *pvBuffer, uint16_t xBytes );
 int16_t frtos_read_uart2( char *pvBuffer, uint16_t xBytes );
 int16_t frtos_read_i2c( periferico_i2c_port_t *xI2c, char *pvBuffer, const uint16_t xBytes );
 int16_t frtos_read_nvm( periferico_nvm_t *xNVM, char *pvBuffer, const uint16_t xBytes );

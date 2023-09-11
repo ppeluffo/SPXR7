@@ -53,8 +53,11 @@ uint8_t i;
         
         // Leo datos
         poll_data(&dataRcd); 
+        // Proceso ( transmito o almaceno) frame de datos por la WAN
+        WAN_process_data_rcd(&dataRcd);
         // Imprimo localmente en pantalla
         xprint_dr(&dataRcd);
+        
 	}
 }
 //------------------------------------------------------------------------------

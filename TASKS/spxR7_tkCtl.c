@@ -13,6 +13,9 @@
 void sys_watchdog_check(void);
 void sys_daily_reset(void);
 
+
+uint16_t count;
+
 //------------------------------------------------------------------------------
 void tkCtl(void * pvParameters)
 {
@@ -20,6 +23,7 @@ void tkCtl(void * pvParameters)
 	// Esta es la primer tarea que arranca.
 
 ( void ) pvParameters;
+fat_s l_fat;
 
 	vTaskDelay( ( TickType_t)( 500 / portTICK_PERIOD_MS ) );
     xprintf_P(PSTR("Starting tkCtl..\r\n"));
@@ -33,12 +37,31 @@ void tkCtl(void * pvParameters)
     // Actualizo las configuraciones locales en el systemConf
     ainputs_update_local_config(&systemConf.ainputs_conf);
     counters_update_local_config(&systemConf.counters_conf);
+    piloto_update_local_config(&systemConf.piloto_conf);
     
     // Funciones que se inician con el RTOS corriendo
+    // Inicializo la memoria EE ( fileSysyem)
+	if ( FS_open() ) {
+		xprintf_P( PSTR("FSInit OK\r\n"));
+	} else {
+        FAT_flush();
+        xprintf_P( PSTR("FSInit FAIL !!.Reformatted...\r\n"));
+		//FS_format(false );	// Reformateo soft.( solo la FAT )
+		//xprintf_P( PSTR("FSInit FAIL !!.Reformatted...\r\n"));
+	}
+
+    FAT_read(&l_fat);
+	xprintf_P( PSTR("MEMsize=%d, wrPtr=%d, rdPtr=%d,count=%d\r\n"),FF_MAX_RCDS, l_fat.head,l_fat.tail, l_fat.count );
+
+    
+	// Imprimo el tamanio de registro de memoria
+	xprintf_P( PSTR("RCD size %d bytes.\r\n"),sizeof(dataRcd_s));
+
     RTC_init();
     
     run_tasks = true;
     
+    count = 0;
 	for( ;; )
 	{
         //vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
@@ -47,7 +70,7 @@ void tkCtl(void * pvParameters)
         sys_watchdog_check();
         sys_daily_reset();
         //xprintf_P(PSTR("Count=%d\r\n"),i++);
-        
+        //xfprintf_P( fdRS485A, PSTR("HOLA122345667789 %05d\r\n"), count++);
 	}
 }
 //------------------------------------------------------------------------------

@@ -14,6 +14,7 @@ int main( void )
     system_init_outofrtos();
 
 	frtos_open(fdTERM, 9600 );
+    frtos_open(fdRS485A, 9600 );
     frtos_open(fdI2C0, 100 );
     frtos_open(fdNVM,0);
     
@@ -23,7 +24,11 @@ int main( void )
 	xHandle_tkCtl = xTaskCreateStatic(tkCtl, "CTL", tkCtl_STACK_SIZE, (void *)1, tkCtl_TASK_PRIORITY, xTask_Ctl_Buffer, &xTask_Ctl_Buffer_Ptr );
     xHandle_tkCmd = xTaskCreateStatic( tkCmd, "CMD", tkCmd_STACK_SIZE, (void *)1, tkCmd_TASK_PRIORITY, xTask_Cmd_Buffer, &xTask_Cmd_Buffer_Ptr );
     xHandle_tkSys = xTaskCreateStatic( tkSys, "SYS", tkSys_STACK_SIZE, (void *)1, tkSys_TASK_PRIORITY, xTask_Sys_Buffer, &xTask_Sys_Buffer_Ptr );
-   
+    xHandle_tkRS485A = xTaskCreateStatic( tkRS485A, "RS485A", tkRS485A_STACK_SIZE, (void *)1, tkRS485A_TASK_PRIORITY, xTask_RS485A_Buffer, &xTask_RS485A_Buffer_Ptr );
+    xHandle_tkWAN = xTaskCreateStatic( tkWAN, "WAN", tkWAN_STACK_SIZE, (void *)1, tkWAN_TASK_PRIORITY, xTask_WAN_Buffer, &xTask_WAN_Buffer_Ptr );
+    xHandle_tkPILOTO = xTaskCreateStatic( tkPiloto, "PLT", tkPILOTO_STACK_SIZE, (void *)1, tkPILOTO_TASK_PRIORITY, xTask_PILOTO_Buffer, &xTask_PILOTO_Buffer_Ptr );
+        
+  
 	/* Arranco el RTOS. */
 	vTaskStartScheduler();
 

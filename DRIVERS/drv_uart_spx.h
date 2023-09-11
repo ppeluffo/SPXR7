@@ -14,6 +14,16 @@
 #include "FreeRTOS.h"
 #include "ringBuffer.h"
 
+
+//------------------------------------------------------------------------------
+#define UART1_TXSIZE	8	// trasmito por poleo. Si uso interrupcion lo subo a 128
+uint8_t uart1_txBuffer[UART1_TXSIZE];
+#define UART1_RXSIZE	64	// 
+uint8_t uart1_rxBuffer[UART1_RXSIZE];
+rBchar_s TXRB_uart1, RXRB_uart1;
+
+void drv_uart1_init(uint32_t baudrate );
+
 //------------------------------------------------------------------------------
 #define UART2_TXSIZE	8	// trasmito por poleo. Si uso interrupcion lo subo a 128
 uint8_t uart2_txBuffer[UART2_TXSIZE];

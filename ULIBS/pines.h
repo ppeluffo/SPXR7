@@ -71,51 +71,6 @@ void VSENSORS420_init(void);
 uint8_t IO_read_PA0(void);
 uint8_t IO_read_PB7(void);
 
-//------------------------------------------------------------------------------
-// OUTPUTS 8814 CONTROL
-
-#define ENB_BITPOS			0
-#define ENB_PORT			PORTB
-#define IO_config_ENB()		PORT_SetPinAsOutput( &ENB_PORT, ENB_BITPOS)
-#define IO_set_ENB()		PORT_SetOutputBit( &ENB_PORT, ENB_BITPOS)
-#define IO_clr_ENB()		PORT_ClearOutputBit( &ENB_PORT, ENB_BITPOS)
-
-#define PHB_BITPOS			1
-#define PHB_PORT			PORTB
-#define IO_config_PHB()		PORT_SetPinAsOutput( &PHB_PORT, PHB_BITPOS)
-#define IO_set_PHB()		PORT_SetOutputBit( &PHB_PORT, PHB_BITPOS)
-#define IO_clr_PHB()		PORT_ClearOutputBit( &PHB_PORT, PHB_BITPOS)
-
-#define V12_OUTS_CTL_BITPOS			3
-#define V12_OUTS_CTL_PORT			PORTA
-#define IO_config_V12_OUTS_CTL()	PORT_SetPinAsOutput( & V12_OUTS_CTL_PORT,  V12_OUTS_CTL_BITPOS)
-#define IO_set_V12_OUTS_CTL()		PORT_SetOutputBit( & V12_OUTS_CTL_PORT,  V12_OUTS_CTL_BITPOS)
-#define IO_clr_V12_OUTS_CTL()		PORT_ClearOutputBit( & V12_OUTS_CTL_PORT,  V12_OUTS_CTL_BITPOS)
-
-#define RES_BITPOS			4
-#define RES_PORT			PORTA
-#define IO_config_RES()		PORT_SetPinAsOutput( &RES_PORT, RES_BITPOS)
-#define IO_set_RES()		PORT_SetOutputBit( &RES_PORT, RES_BITPOS)
-#define IO_clr_RES()		PORT_ClearOutputBit( &RES_PORT, RES_BITPOS)
-
-#define SLP_BITPOS			5
-#define SLP_PORT			PORTA
-#define IO_config_SLP()		PORT_SetPinAsOutput( &SLP_PORT, SLP_BITPOS)
-#define IO_set_SLP()		PORT_SetOutputBit( &SLP_PORT, SLP_BITPOS)
-#define IO_clr_SLP()		PORT_ClearOutputBit( &SLP_PORT, SLP_BITPOS)
-
-#define PHA_BITPOS			6
-#define PHA_PORT			PORTA
-#define IO_config_PHA()		PORT_SetPinAsOutput( &PHA_PORT, PHA_BITPOS)
-#define IO_set_PHA()		PORT_SetOutputBit( &PHA_PORT, PHA_BITPOS)
-#define IO_clr_PHA()		PORT_ClearOutputBit( &PHA_PORT, PHA_BITPOS)
-
-#define ENA_BITPOS			7
-#define ENA_PORT			PORTA
-#define IO_config_ENA()		PORT_SetPinAsOutput( &ENA_PORT, ENA_BITPOS)
-#define IO_set_ENA()		PORT_SetOutputBit( &ENA_PORT, ENA_BITPOS)
-#define IO_clr_ENA()		PORT_ClearOutputBit( &ENA_PORT, ENA_BITPOS)
-
 //------------------------------------------------------------------------------------
 // GPRS
 
@@ -171,17 +126,6 @@ uint8_t IO_read_RI(void);
 //------------------------------------------------------------------------------------
 // AUX1
 
-#define RTS_RS485A_PORT         PORTC
-#define RTS_RS485A              4
-#define RTS_RS485A_PIN_bm       PIN4_bm
-#define RTS_RS485A_PIN_bp       PIN4_bp
-#define SET_RTS_RS485A()        ( RTS_RS485A_PORT.OUT |= RTS_RS485A_PIN_bm )
-#define CLEAR_RTS_RS485A()      ( RTS_RS485A_PORT.OUT &= ~RTS_RS485A_PIN_bm )
-
-#define CONFIG_RTS_485A()       RTS_RS485A_PORT.DIR |= RTS_RS485A_PIN_bm;
-
-
-//------------------------------------------------------------------------------------
 // MAIN POWER SLEEP MODE
 
 #define PWR_SLEEP_BITPOS	5
@@ -192,32 +136,6 @@ uint8_t IO_read_RI(void);
 #define IO_clr_PWR_SLEEP()		PORT_ClearOutputBit( &PWR_SLEEP_PORT, PWR_SLEEP_BITPOS)
 
 //------------------------------------------------------------------------------------
-//
-// FLASH MEMORY SELECT
-
-#define SPIMEM_CS_BITPOS		4
-#define SPIMEM_CS_PORT			PORTC
-#define IO_config_SPIMEM_CS()	PORT_SetPinAsOutput( &SPIMEM_CS_PORT, SPIMEM_CS_BITPOS)
-#define IO_set_SPIMEM_CS()		PORT_SetOutputBit( &SPIMEM_CS_PORT, SPIMEM_CS_BITPOS)
-#define IO_clr_SPIMEM_CS()		PORT_ClearOutputBit( &SPIMEM_CS_PORT, SPIMEM_CS_BITPOS)
-
-#define SPIMEM_MOSI_BITPOS		5
-#define SPIMEM_MOSI_PORT		PORTC
-#define IO_config_SPIMEM_MOSI()	PORT_SetPinAsOutput( &SPIMEM_MOSI_PORT, SPIMEM_MOSI_BITPOS)
-#define IO_set_SPIMEM_MOSI()	PORT_SetOutputBit( &SPIMEM_MOSI_PORT, SPIMEM_MOSI_BITPOS)
-#define IO_clr_SPIMEM_MOSI()	PORT_ClearOutputBit( &SPIMEM_MOSI_PORT, SPIMEM_MOSI_BITPOS)
-
-#define SPIMEM_SCK_BITPOS		7
-#define SPIMEM_SCK_PORT			PORTC
-#define IO_config_SPIMEM_SCK()	PORT_SetPinAsOutput( &SPIMEM_SCK_PORT, SPIMEM_SCK_BITPOS)
-#define IO_set_SPIMEM_SCK()		PORT_SetOutputBit( &SPIMEM_SCK_PORT, SPIMEM_SCK_BITPOS)
-#define IO_clr_SPIMEM_SCK()		PORT_ClearOutputBit( &SPIMEM_SCK_PORT, SPIMEM_SCK_BITPOS)
-
-//void IO_config_SPIMEM_CS(void);
-//void IO_set_SPIMEM_CS(void);
-//void IO_clr_SPIMEM_CS(void);
-
-//------------------------------------------------------------------------------------
 
 #define SLEEP_CTL_BITPOS		0
 #define SLEEP_CTL_PORT			PORTB
@@ -225,5 +143,130 @@ uint8_t IO_read_RI(void);
 #define IO_config_SLEEP_CTL()		PORT_SetPinAsInput( &SLEEP_CTL_PORT, SLEEP_CTL_BITPOS)
 uint8_t IO_read_SLEEP_CTL(void);
 //------------------------------------------------------------------------------------
+// RELES
+
+#define RELE_K1_PORT         PORTD
+#define RELE_K1              5
+#define RELE_K1_PIN_bm       PIN4_bm
+#define RELE_K1_PIN_bp       PIN4_bp
+
+#define SET_RELE_K1()       ( RELE_K1_PORT.OUT |= RELE_K1_PIN_bm )
+#define CLEAR_RELE_K1()     ( RELE_K1_PORT.OUT &= ~RELE_K1_PIN_bm )
+#define TOGGLE_RELE_K1()    ( RELE_K1_PORT.OUT ^= 1UL << RELE_K1_PIN_bp);
+    
+#define RELE_K1_OPEN()      SET_RELE_K1() 
+#define RELE_K1_CLOSE()     CLEAR_RELE_K1()
+
+#define MODEM_PRENDER()     SET_RELE_K1() 
+#define MODEM_APAGAR()      CLEAR_RELE_K1()
+
+void RELE_K1_init(void);
+    
+#define RELE_K2_PORT         PORTD
+#define RELE_K2              4 
+#define RELE_K2_PIN_bm       PIN5_bm
+#define RELE_K2_PIN_bp       PIN5_bp
+
+#define SET_RELE_K2()       ( RELE_K2_PORT.OUT |= RELE_K2_PIN_bm )
+#define CLEAR_RELE_K2()     ( RELE_K2_PORT.OUT &= ~RELE_K2_PIN_bm )
+#define TOGGLE_RELE_K2()    ( RELE_K2_PORT.OUT ^= 1UL << RELE_K2_PIN_bp);
+    
+#define RELE_K2_OPEN()      SET_RELE_K2() 
+#define RELE_K2_CLOSE()     CLEAR_RELE_K2()
+
+
+void RELE_K2_init(void);
+
+//------------------------------------------------------------------------------
+// RTS485A
+
+#define RTS_RS485A_PORT         PORTE
+#define RTS_RS485A              5
+#define RTS_RS485A_PIN_bm       PIN5_bm
+#define RTS_RS485A_PIN_bp       PIN5_bp
+#define SET_RTS_RS485A()        ( RTS_RS485A_PORT.OUT |= RTS_RS485A_PIN_bm )
+#define CLEAR_RTS_RS485A()      ( RTS_RS485A_PORT.OUT &= ~RTS_RS485A_PIN_bm )
+
+#define CONFIG_RTS_485A()       RTS_RS485A_PORT.DIR |= RTS_RS485A_PIN_bm;
+
+//------------------------------------------------------------------------------
+// DRV8814:
+
+#define V12_OUTS_CTL_BITPOS			3
+#define V12_OUTS_CTL_PORT			PORTA
+#define IO_config_V12_OUTS_CTL()	PORT_SetPinAsOutput( & V12_OUTS_CTL_PORT,  V12_OUTS_CTL_BITPOS)
+#define IO_set_V12_OUTS_CTL()		PORT_SetOutputBit( & V12_OUTS_CTL_PORT,  V12_OUTS_CTL_BITPOS)
+#define IO_clr_V12_OUTS_CTL()		PORT_ClearOutputBit( & V12_OUTS_CTL_PORT,  V12_OUTS_CTL_BITPOS)
+
+#define DRV8814_RESET_PORT      PORTA      
+#define DRV8814_RESET           4
+#define DRV8814_RESET_PIN_bm    PIN4_bm
+#define DRV8814_RESET_PIN_bp    PIN4_bp
+#define SET_DRV8814_RESET       ( DRV8814_RESET_PORT.OUT |= DRV8814_RESET_PIN_bm )
+#define CLEAR_DRV8814_RESET     ( DRV8814_RESET_PORT.OUT &= ~DRV8814_RESET_PIN_bm )
+#define CONFIG_DRV8814_RESET    ( DRV8814_RESET_PORT.DIR |= DRV8814_RESET_PIN_bm )
+
+#define DRV8814_SLEEP_PORT      PORTA     
+#define DRV8814_SLEEP           5
+#define DRV8814_SLEEP_PIN_bm    PIN5_bm
+#define DRV8814_SLEEP_PIN_bp    PIN5_bp
+#define SET_DRV8814_SLEEP       ( DRV8814_SLEEP_PORT.OUT |= DRV8814_SLEEP_PIN_bm )
+#define CLEAR_DRV8814_SLEEP     ( DRV8814_SLEEP_PORT.OUT &= ~DRV8814_SLEEP_PIN_bm )
+#define CONFIG_DRV8814_SLEEP    ( DRV8814_SLEEP_PORT.DIR |= DRV8814_SLEEP_PIN_bm )
+
+#define DRV8814_AEN_PORT      PORTA    
+#define DRV8814_AEN           7
+#define DRV8814_AEN_PIN_bm    PIN7_bm
+#define DRV8814_AEN_PIN_bp    PIN7_bp
+#define SET_DRV8814_AEN       ( DRV8814_AEN_PORT.OUT |= DRV8814_AEN_PIN_bm )
+#define CLEAR_DRV8814_AEN     ( DRV8814_AEN_PORT.OUT &= ~DRV8814_AEN_PIN_bm )
+#define CONFIG_DRV8814_AEN    ( DRV8814_AEN_PORT.DIR |= DRV8814_AEN_PIN_bm )
+
+#define DRV8814_BEN_PORT      PORTB      
+#define DRV8814_BEN           0
+#define DRV8814_BEN_PIN_bm    PIN0_bm
+#define DRV8814_BEN_PIN_bp    PIN0_bp
+#define SET_DRV8814_BEN       ( DRV8814_BEN_PORT.OUT |= DRV8814_BEN_PIN_bm )
+#define CLEAR_DRV8814_BEN     ( DRV8814_BEN_PORT.OUT &= ~DRV8814_BEN_PIN_bm )
+#define CONFIG_DRV8814_BEN    ( DRV8814_BEN_PORT.DIR |= DRV8814_BEN_PIN_bm )
+
+#define DRV8814_APH_PORT      PORTA      
+#define DRV8814_APH           6
+#define DRV8814_APH_PIN_bm    PIN6_bm
+#define DRV8814_APH_PIN_bp    PIN6_bp
+#define SET_DRV8814_APH       ( DRV8814_APH_PORT.OUT |= DRV8814_APH_PIN_bm )
+#define CLEAR_DRV8814_APH     ( DRV8814_APH_PORT.OUT &= ~DRV8814_APH_PIN_bm )
+#define CONFIG_DRV8814_APH    ( DRV8814_APH_PORT.DIR |= DRV8814_APH_PIN_bm )
+
+#define DRV8814_BPH_PORT      PORTB      
+#define DRV8814_BPH           1
+#define DRV8814_BPH_PIN_bm    PIN1_bm
+#define DRV8814_BPH_PIN_bp    PIN1_bp
+#define SET_DRV8814_BPH       ( DRV8814_BPH_PORT.OUT |= DRV8814_BPH_PIN_bm )
+#define CLEAR_DRV8814_BPH     ( DRV8814_BPH_PORT.OUT &= ~DRV8814_BPH_PIN_bm )
+#define CONFIG_DRV8814_BPH    ( DRV8814_BPH_PORT.DIR |= DRV8814_BPH_PIN_bm )
+
+//------------------------------------------------------------------------------
+
+// Los pines de FinCarrera son entradas
+#define FC1_PORT      PORTB    
+#define FC1           7
+#define FC1_PIN_bm    PIN7_bm
+#define FC1_PIN_bp    PIN7_bp
+#define CONFIG_FC1    ( FC1_PORT.DIR &= ~FC1_PIN_bm )
+
+#define FC2_PORT      PORTB     
+#define FC2           6
+#define FC2_PIN_bm    PIN6_bm
+#define FC2_PIN_bp    PIN6_bp
+#define CONFIG_FC2    ( FC2_PORT.DIR &= ~FC2_PIN_bm )
+
+uint8_t FC1_read(void);
+uint8_t FC2_read(void);
+#define FC_alta_read() FC1_read()
+#define FC_baja_read() FC2_read()
+void FCx_init(void);
+
+//------------------------------------------------------------------------------
 
 #endif /* SRC_SPX_LIBS_L_IOPINES_H_ */

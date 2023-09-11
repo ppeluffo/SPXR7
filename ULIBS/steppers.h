@@ -1,35 +1,44 @@
-/*
- * l_steppers.h
+/* 
+ * File:   steppers.h
+ * Author: pablo
  *
- *  Created on: 11 ene. 2021
- *      Author: pablo
+ * Created on 22 de mayo de 2023, 11:59 AM
  */
 
-#ifndef SRC_SPX_LIBS_L_STEPPERS_H_
-#define SRC_SPX_LIBS_L_STEPPERS_H_
+#ifndef STEPPERS_H
+#define	STEPPERS_H
 
-#include "iopines.h"
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "pines.h"
+#include "stdint.h"
+#include "stdlib.h"
+#include "string.h"
 #include "drv8814.h"
-
+#include "xprintf.h"
+    
 typedef enum { STEPPER_REV = 0, STEPPER_FWD = 1 } t_stepper_dir;
 
-#define stepper_pwr_on() 	DRV8814_power_on()
-#define stepper_pwr_off() 	DRV8814_power_off()
-#define stepper_init() 		DRV8814_init()
+void stepper_init_outofrtos(void);
+void stepper_init_phase(void);
+void stepper_next_phase( t_stepper_dir dir);
+void stepper_set_phase(t_stepper_dir dir, uint16_t dtime);
+void stepper_stop(void);
+bool stepper_is_running(void);
 
-void stepper_cmd( char *s_dir, char *s_npulses, char *s_dtime, char *s_ptime );
+void stepper_move( t_stepper_dir dir, uint16_t npulses, uint16_t dtime, uint16_t ptime );
+bool stepper_test( char *s_cmd, char *s_dir, char *s_npulses, char *s_dtime, char *s_ptime);
 
-void stepper_awake(void);
-void stepper_sleep(void);
 
-void pulse_Amas_Amenos(uint16_t dtime );
-void pulse_Amenos_Amas(uint16_t dtime );
-void pulse_Bmas_Bmenos(uint16_t dtime );
-void pulse_Bmenos_Bmas(uint16_t dtime );
 
-void stepper_start(void);
-void stepper_sequence( t_stepper_dir dir);
-void stepper_pulse(uint8_t sequence, uint16_t dtime);
-void stepper_pulse1(uint8_t sequence, uint16_t dtime);
+#ifdef	__cplusplus
+}
+#endif
 
-#endif /* SRC_SPX_LIBS_L_STEPPERS_H_ */
+#endif	/* STEPPERS_H */
+

@@ -12,6 +12,8 @@ bool device_id_ok = false;
 char nvmid_str[32] = { 0 };
 char nvm_device_id_str[24] = { 0 };
 
+char nvm_str_buffer[38];
+
 //------------------------------------------------------------------------------
 char *NVMEE_read_serial( void )
 {

@@ -27,7 +27,7 @@ int16_t xRet = -1;
         xRet = 0;
 		break;
 	case fdRS485A:
-		//frtos_open_uart1( flags );
+		frtos_open_uart1( flags );
         xRet = 0;
 		break;
 	case fdTERM:
@@ -57,7 +57,7 @@ int16_t xRet = -1;
 		//xRet = frtos_ioctl_uart0( ulRequest, pvValue );
 		break;
 	case fdRS485A:
-		//xRet = frtos_ioctl_uart1( ulRequest, pvValue );
+		xRet = frtos_ioctl_uart1( ulRequest, pvValue );
 		break;
 	case fdTERM:
 		xRet = frtos_ioctl_uart2( ulRequest, pvValue );
@@ -85,7 +85,7 @@ int16_t xRet = -1;
 		//xRet = frtos_write_uart0( pvBuffer, xBytes );
 		break;
 	case fdRS485A:
-		//xRet = frtos_write_uart1( pvBuffer, xBytes );
+		xRet = frtos_write_uart1( pvBuffer, xBytes );
 		break;
 	case fdTERM:
 		xRet = frtos_write_uart2( pvBuffer, xBytes );;
@@ -113,7 +113,7 @@ int16_t xRet = -1;
 		//xRet = frtos_read_uart0( pvBuffer, xBytes );
 		break;
 	case fdRS485A:
-		//xRet = frtos_read_uart1( pvBuffer, xBytes );
+		xRet = frtos_read_uart1( pvBuffer, xBytes );
 		break;
 	case fdTERM:
 		xRet = frtos_read_uart2( pvBuffer, xBytes );
@@ -132,6 +132,137 @@ int16_t xRet = -1;
 }
 //------------------------------------------------------------------------------
 // FUNCIONES ESPECIFICAS DE UART's
+//------------------------------------------------------------------------------
+void frtos_open_uart1( uint32_t baudrate)
+{
+    drv_uart1_init( baudrate );
+}
+//------------------------------------------------------------------------------
+int16_t frtos_write_uart1( const char *pvBuffer, const uint16_t xBytes )
+{
+    /*
+     * Es RS485: Debo usar RTS
+     * Transmito por poleo escribiendo de a 1 byte en el puerto serial
+     * No uso interrupciones
+     *
+     */
+
+//char cChar = '\0';
+//char *p = NULL;
+//int16_t wBytes = 0;
+//uint16_t i;
+
+uint16_t i;
+    
+    for( i = 0; i < xBytes; i++) {
+        while(! USART_IsTXDataRegisterEmpty(&USARTE0) )
+            ;
+        USART_PutChar(&USARTE0, pvBuffer[i]);
+    }
+    vTaskDelay( ( TickType_t)( 1 ) );
+    return(xBytes);
+    
+    /*
+	// RTS ON. Habilita el sentido de trasmision del chip.
+	//SET_RTS_RS485A();
+	vTaskDelay( ( TickType_t)( 5 ) );
+    p = (char *)pvBuffer;  
+    
+    // Transmision x poleo ( No hablito al INT x DRIE )
+    taskENTER_CRITICAL();
+    for( i = 0; i < xBytes; i++) {
+        while(! USART_IsTXDataRegisterEmpty(&USARTE0) )
+            ;
+        // Voy cargando la cola de a uno.
+		cChar = *p;
+		// Delay inter chars.(Shinco, Taosonic = 2)
+		//vTaskDelay( ( TickType_t)( 2 ) );
+        //_delay_us (1750);
+        USART_PutChar(&USARTE0, cChar );
+		p++;
+		wBytes++;	// Cuento los bytes que voy trasmitiendo
+        while(! USART_IsTXDataRegisterEmpty(&USARTE0) )
+            ;
+    }
+    
+    taskEXIT_CRITICAL();
+    frtos_ioctl( fdRS485A, ioctl_UART_CLEAR_RX_BUFFER, NULL );
+    vTaskDelay( ( TickType_t)( 2 ) );
+	// RTS OFF: Habilita la recepcion del chip
+	//CLEAR_RTS_RS485A();
+    
+	return (wBytes);
+     */
+}
+//------------------------------------------------------------------------------
+int16_t frtos_ioctl_uart1( uint32_t ulRequest, void *pvValue )
+{
+
+int16_t xReturn = 0;
+
+	switch( ulRequest )
+	{
+
+		case ioctl_UART_CLEAR_RX_BUFFER:
+			rBchar_Flush(&RXRB_uart1);
+			break;
+		case ioctl_UART_CLEAR_TX_BUFFER:
+			rBchar_Flush(&TXRB_uart1);
+			break;
+		default :
+			xReturn = -1;
+			break;
+	}
+
+	return xReturn;
+
+}
+//------------------------------------------------------------------------------
+int16_t frtos_read_uart1( char *pvBuffer, uint16_t xBytes )
+{
+	// Lee caracteres de la cola de recepcion y los deja en el buffer.
+	// El timeout lo fijo con ioctl.
+
+	// Lee caracteres de la cola de recepcion y los deja en el buffer.
+	// El timeout lo fijo con ioctl.
+
+int16_t xBytesReceived = 0U;
+TickType_t xTicksToWait = 10;
+TimeOut_t xTimeOut;
+
+     /* Initialize xTimeOut.  This records the time at which this function was
+        entered. 
+      */
+	vTaskSetTimeOutState( &xTimeOut );
+
+	// Are there any more bytes to be received?
+	while( xBytesReceived < xBytes )
+	{
+
+        if( rBchar_Pop( &RXRB_uart1, &((char *)pvBuffer)[ xBytesReceived ] ) == true ) {
+			xBytesReceived++;
+            /*
+             Recibi un byte. Re-inicio el timeout.
+             */
+            vTaskSetTimeOutState( &xTimeOut );
+			//taskYIELD();
+            //vTaskDelay( ( TickType_t)( 1 ) );
+		} else {
+			// Espero xTicksToWait antes de volver a chequear
+			vTaskDelay( ( TickType_t)( 1 ) );
+
+            // Time out has expired ?
+            if( xTaskCheckForTimeOut( &xTimeOut, &xTicksToWait ) != pdFALSE )
+            {
+                break;
+            }
+        }
+
+    }
+
+	return ( xBytesReceived );
+
+}
 //------------------------------------------------------------------------------
 void frtos_open_uart2( uint32_t baudrate)
 {

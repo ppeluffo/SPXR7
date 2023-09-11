@@ -29,12 +29,30 @@ void system_init_outofrtos(void)
 	LED_init();
     XPRINTF_init();
     I2C_init();
+    RELE_K1_init();
+    RELE_K2_init();
+    FS_init();
+    CONFIG_RTS_485A();
+    DRV8814_init();
+    FCx_init();
     
     // Creo los semaforos
 	sem_SYSVars = xSemaphoreCreateMutexStatic( &SYSVARS_xMutexBuffer );
 
     ainputs_init_outofrtos(sem_SYSVars);
     counters_init_outofrtos(sem_SYSVars);
+    stepper_init_outofrtos();
+    piloto_init_outofrtos(sem_SYSVars);
+    piloto_init();
+    
+    xHandle_idle = NULL;
+    xHandle_tkCtl = NULL;
+    xHandle_tkCmd = NULL;
+    xHandle_tkSys = NULL;
+    xHandle_tkRS485A = NULL;
+    xHandle_tkWAN = NULL;
+    xHandle_tkPILOTO = NULL;
+    
     
 }
 //------------------------------------------------------------------------------
@@ -203,6 +221,8 @@ void config_default(void)
     // Configuro a default todas las configuraciones locales
     // y luego actualizo el systemConf
       
+    memcpy(systemConf.dlgid, "DEFAULT\0", sizeof(systemConf.dlgid));
+    
     systemConf.timerpoll = 60;
     systemConf.timerdial = 0;
     
@@ -215,11 +235,13 @@ void config_default(void)
     // Actualizo las configuraciones locales a default
     ainputs_config_defaults();
     counters_config_defaults();
-     
+    piloto_config_defaults();
+    
     // Actualizo las configuraciones locales en el systemConf
     ainputs_read_local_config(&systemConf.ainputs_conf);
     counters_read_local_config(&systemConf.counters_conf);
-     
+    piloto_read_local_config(&systemConf.piloto_conf);
+    
 }
 //------------------------------------------------------------------------------
 bool config_debug( char *tipo, char *valor)
@@ -230,9 +252,23 @@ bool config_debug( char *tipo, char *valor)
     
     if (!strcmp_P( strupr(tipo), PSTR("NONE")) ) {
         ainputs_config_debug(false);
+        counters_config_debug(false);
+        WAN_config_debug(false);
+        piloto_config_debug(false);
         return(true); 
     }
 
+    if (!strcmp_P( strupr(tipo), PSTR("PILOTO")) ) {
+        if (!strcmp_P( strupr(valor), PSTR("TRUE")) ) {
+            piloto_config_debug(true);
+            return(true);
+        }
+        if (!strcmp_P( strupr(valor), PSTR("FALSE")) ) {
+            piloto_config_debug(false);
+            return(true);
+        }
+    }
+    
     if (!strcmp_P( strupr(tipo), PSTR("ANALOG")) ) {
         if (!strcmp_P( strupr(valor), PSTR("TRUE")) ) {
             ainputs_config_debug(true);
@@ -251,6 +287,17 @@ bool config_debug( char *tipo, char *valor)
         }
         if (!strcmp_P( strupr(valor), PSTR("FALSE")) ) {
             counters_config_debug(false);
+            return(true);
+        }
+    }
+    
+    if (!strcmp_P( strupr(tipo), PSTR("COMMS")) ) {
+        if (!strcmp_P( strupr(valor), PSTR("TRUE")) ) {
+            WAN_config_debug(true);
+            return(true);
+        }
+        if (!strcmp_P( strupr(valor), PSTR("FALSE")) ) {
+            WAN_config_debug(false);
             return(true);
         }
     }
@@ -419,4 +466,225 @@ uint8_t i, channel;
     xprintf_P( PSTR("\r\n"));
 }
 //------------------------------------------------------------------------------
+uint8_t confbase_hash(void)
+{
+   
+uint8_t hash_buffer[32];
+uint8_t hash = 0;
+char *p;
+
+    // Calculo el hash de la configuracion base
+    memset(hash_buffer, '\0', sizeof(hash_buffer));
+    sprintf_P( (char *)&hash_buffer, PSTR("[TIMERPOLL:%03d]"), systemConf.timerpoll );
+    p = (char *)hash_buffer;
+    while (*p != '\0') {
+		hash = u_hash(hash, *p++);
+	}
+    //xprintf_P(PSTR("HASH_BASE:<%s>, hash=%d\r\n"),hash_buffer, hash );
+    //
+    memset(hash_buffer, '\0', sizeof(hash_buffer));
+    sprintf_P( (char *)&hash_buffer, PSTR("[TIMERDIAL:%03d]"), systemConf.timerdial );
+    p = (char *)hash_buffer;
+    while (*p != '\0') {
+		hash = u_hash(hash, *p++);
+	}
+    //xprintf_P(PSTR("HASH_BASE:<%s>, hash=%d\r\n"),hash_buffer, hash );    
+    //
+    memset(hash_buffer, '\0', sizeof(hash_buffer));
+    sprintf_P( (char *)&hash_buffer, PSTR("[PWRMODO:%d]"), systemConf.pwr_modo );
+    p = (char *)hash_buffer;
+    while (*p != '\0') {
+		hash = u_hash(hash, *p++);
+	}
+    //xprintf_P(PSTR("HASH_BASE:<%s>, hash=%d\r\n"),hash_buffer, hash );
+    //
+    memset(hash_buffer, '\0', sizeof(hash_buffer));
+    sprintf_P( (char *)&hash_buffer, PSTR("[PWRON:%04d]"), systemConf.pwr_hhmm_on );
+    p = (char *)hash_buffer;
+    while (*p != '\0') {
+		hash = u_hash(hash, *p++);
+	}
+    //xprintf_P(PSTR("HASH_BASE:<%s>, hash=%d\r\n"),hash_buffer, hash );
+    //
+    memset(hash_buffer, '\0', sizeof(hash_buffer));
+    sprintf_P( (char *)&hash_buffer, PSTR("[PWROFF:%04d]"), systemConf.pwr_hhmm_off );
+    p = (char *)hash_buffer;
+    while (*p != '\0') {
+		hash = u_hash(hash, *p++);
+	}
+    //xprintf_P(PSTR("HASH_BASE:<%s>, hash=%d\r\n"),hash_buffer, hash );
+    //
+    memset(hash_buffer, '\0', sizeof(hash_buffer));
+    sprintf_P( (char *)&hash_buffer, PSTR("[SAMPLES:%02d]"), systemConf.samples_count );
+    p = (char *)hash_buffer;
+    while (*p != '\0') {
+		hash = u_hash(hash, *p++);
+	}
+    //xprintf_P(PSTR("HASH_BASE:<%s>, hash=%d\r\n"),hash_buffer, hash );
+    //
+    memset(hash_buffer, '\0', sizeof(hash_buffer));
+    sprintf_P( (char *)&hash_buffer, PSTR("[ALMLEVEL:%02d]"), systemConf.alarm_level );
+    p = (char *)hash_buffer;
+    while (*p != '\0') {
+		hash = u_hash(hash, *p++);
+	}  
+    //xprintf_P(PSTR("HASH_BASE:<%s>, hash=%d\r\n"),hash_buffer, hash );
+    
+    return(hash);
+}
+//------------------------------------------------------------------------------
+bool config_pwrmodo ( char *s_pwrmodo )
+{
+    if ((strcmp_P( strupr(s_pwrmodo), PSTR("CONTINUO")) == 0) ) {
+        systemConf.pwr_modo = PWR_CONTINUO;
+        return(true);
+    }
+    
+    if ((strcmp_P( strupr(s_pwrmodo), PSTR("DISCRETO")) == 0) ) {
+        systemConf.pwr_modo = PWR_DISCRETO;
+        return(true);
+    }
+    
+    if ((strcmp_P( strupr(s_pwrmodo), PSTR("MIXTO")) == 0) ) {
+        systemConf.pwr_modo = PWR_MIXTO;
+        return(true);
+    }
+    
+    return(false);
+}
+//------------------------------------------------------------------------------
+bool config_pwron ( char *s_pwron )
+{
+    systemConf.pwr_hhmm_on = atoi(s_pwron);
+    return(true);
+}
+//------------------------------------------------------------------------------
+bool config_pwroff ( char *s_pwroff )
+{
+    systemConf.pwr_hhmm_off = atoi(s_pwroff);
+    return(true);
+}
+//------------------------------------------------------------------------------
+bool config_almlevel ( char *s_almlevel )
+{
+	// Configura el nivel de disparo de alarmas.
+	// Se utiliza desde el modo discreto e indica el porcentaje del valor
+    // de la medida.
+    // Varia entre 0 y 100
+
+
+	systemConf.alarm_level = atoi(s_almlevel);
+
+	if ( systemConf.alarm_level < 0 )
+		systemConf.alarm_level = 0;
+
+	if ( systemConf.alarm_level > 100 )
+		systemConf.alarm_level = 100;
+
+	return(true);
+}
+//------------------------------------------------------------------------------
+void data_resync_clock( char *str_time, bool force_adjust)
+{
+	/*
+	 * Ajusta el clock interno de acuerdo al valor de rtc_s
+	 * Bug 01: 2021-12-14:
+	 * El ajuste no considera los segundos entonces si el timerpoll es c/15s, cada 15s
+	 * se reajusta y cambia la hora del datalogger.
+	 * Modifico para que el reajuste se haga si hay una diferencia de mas de 90s entre
+	 * el reloj local y el del server
+	 */
+
+
+float diff_seconds;
+RtcTimeType_t rtc_l, rtc_wan;
+int8_t xBytes = 0;
+   
+    // Convierto el string YYMMDDHHMM a RTC.
+    //xprintf_P(PSTR("DATA: DEBUG CLOCK2\r\n") );
+    memset( &rtc_wan, '\0', sizeof(rtc_wan) );        
+    RTC_str2rtc( str_time, &rtc_wan);
+    //xprintf_P(PSTR("DATA: DEBUG CLOCK3\r\n") );
+            
+            
+	if ( force_adjust ) {
+		// Fuerzo el ajuste.( al comienzo )
+		xBytes = RTC_write_dtime(&rtc_wan);		// Grabo el RTC
+		if ( xBytes == -1 ) {
+			xprintf_P(PSTR("ERROR: CLOCK: I2C:RTC:pv_process_server_clock\r\n"));
+		} else {
+			xprintf_P( PSTR("CLOCK: Update rtc.\r\n") );
+		}
+		return;
+	}
+
+	// Solo ajusto si la diferencia es mayor de 90s
+	// Veo la diferencia de segundos entre ambos.
+	// Asumo yy,mm,dd iguales
+	// Leo la hora actual del datalogger
+	RTC_read_dtime( &rtc_l);
+	diff_seconds = abs( rtc_l.hour * 3600 + rtc_l.min * 60 + rtc_l.sec - ( rtc_wan.hour * 3600 + rtc_wan.min * 60 + rtc_wan.sec));
+	//xprintf_P( PSTR("COMMS: rtc diff=%.01f\r\n"), diff_seconds );
+
+	if ( diff_seconds > 90 ) {
+		// Ajusto
+		xBytes = RTC_write_dtime(&rtc_wan);		// Grabo el RTC
+		if ( xBytes == -1 ) {
+			xprintf_P(PSTR("ERROR: CLOCK: I2C:RTC:pv_process_server_clock\r\n"));
+		} else {
+			xprintf_P( PSTR("CLOCK: Update rtc\r\n") );
+		}
+		return;
+	}
+}
+//------------------------------------------------------------------------------
+void reset_memory_remote(void)
+{
+    /*
+     * Desde el servidor podemos mandar resetear la memoria cuando detectamos
+     * problemas como fecha/hora en 0 o valores incorrectos.
+     * Se debe mandar 'RESMEM'
+     */
+          
+    vTaskSuspend( xHandle_tkSys );
+    vTaskSuspend( xHandle_tkRS485A );
+    //vTaskSuspend( xHandle_tkWAN );    
+
+    FS_format(true);
+    
+    xprintf("Reset..\r\n");
+    reset();
+    
+}
+//------------------------------------------------------------------------------
+void print_pwr_configuration(void)
+{
+    /*
+     * Muestra en pantalla el modo de energia configurado
+     */
+    
+uint16_t hh, mm;
+    
+    switch( systemConf.pwr_modo ) {
+        case PWR_CONTINUO:
+            xprintf_P(PSTR(" pwr_modo: continuo\r\n"));
+            break;
+        case PWR_DISCRETO:
+            xprintf_P(PSTR(" pwr_modo: discreto (%d s)\r\n"), systemConf.timerdial);
+            break;
+        case PWR_MIXTO:
+            xprintf_P(PSTR(" pwr_modo: mixto\r\n"));
+            hh = (uint8_t)(systemConf.pwr_hhmm_on / 100);
+            mm = (uint8_t)(systemConf.pwr_hhmm_on % 100);
+            xprintf_P(PSTR("    inicio continuo -> %02d:%02d\r\n"), hh,mm);
+            
+            hh = (uint8_t)(systemConf.pwr_hhmm_off / 100);
+            mm = (uint8_t)(systemConf.pwr_hhmm_off % 100);
+            xprintf_P(PSTR("    inicio discreto -> %02d:%02d\r\n"), hh,mm);
+            break;
+    }
+    xprintf_P(PSTR(" pwr_on:%d, pwr_off:%d\r\n"),systemConf.pwr_hhmm_on, systemConf.pwr_hhmm_off );
+}
+//------------------------------------------------------------------------------
+
 

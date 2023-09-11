@@ -137,7 +137,7 @@ va_list args;
 int i;
 
     // Los fd RS485 requieren del RTS !!
-    if ( fd == fdRS485A )
+    if ( fd == fdRS485A ) 
         SET_RTS_RS485A();
 
 	// Espero el semaforo del buffer en forma persistente.
@@ -157,7 +157,7 @@ int i;
     
     if ( fd == fdRS485A ) {
         vTaskDelay( ( TickType_t)( 2 ) );
-        CLEAR_RTS_RS485A();
+       CLEAR_RTS_RS485A();
     }
     
 	return(i);

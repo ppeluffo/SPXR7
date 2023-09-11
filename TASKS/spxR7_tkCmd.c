@@ -63,6 +63,39 @@ static void cmdTestFunction(void)
 
     FRTOS_CMD_makeArgv();
 
+    if (!strcmp_P( strupr(argv[1]), PSTR("KILL"))  ) {
+        if (!strcmp_P( strupr(argv[2]), PSTR("WAN"))  ) { 
+            WAN_kill_task();
+            return;
+        }
+        
+        if (!strcmp_P( strupr(argv[2]), PSTR("SYS"))  ) {
+            if ( xHandle_tkSys != NULL ) {
+                vTaskSuspend( xHandle_tkSys );
+                xHandle_tkSys = NULL;
+            }
+            return;
+        }        
+        xprintf_P(PSTR("test kill {sys,wan}\r\n"));
+        return;
+    }
+
+ 
+    if (!strcmp_P( strupr(argv[1]), PSTR("MODEM"))  ) {
+        if (!strcmp_P( strupr(argv[2]), PSTR("PRENDER"))  ) { 
+            MODEM_PRENDER();
+            return;
+        }
+        
+        if (!strcmp_P( strupr(argv[2]), PSTR("APAGAR"))  ) {
+            MODEM_APAGAR();
+            return;
+        }        
+        xprintf_P(PSTR("test kill {sys,wan}\r\n"));
+        return;
+    }
+    
+    
     xprintf_P( PSTR("Test: poll, readrcd {pos},readdrcd {pos}, fsdebugon, fsdebugoff, write, kill {wan,sys}\r\n"));
     return;
        
@@ -79,6 +112,15 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("  rtc YYMMDDhhmm\r\n"));
         xprintf_P( PSTR("  ina {a|b} {confValue}\r\n"));
         xprintf_P( PSTR("  vsensors420 {on/off}\r\n"));
+        xprintf_P( PSTR("  k1,k2 {open/close}\r\n"));
+        xprintf_P( PSTR("  rs485a {string}\r\n"));
+        xprintf_P( PSTR("  piloto {pres}\r\n"));        
+        xprintf_P( PSTR("  drv8814 {SLEEP,RESET,AENA,BENA,APH,BPH},{SET,CLEAR}\r\n"));
+        xprintf_P( PSTR("  drv8814 {FC1,FC2}, GET\r\n"));
+        xprintf_P( PSTR("  stepper move {FW,REV},npulses,dtime,ptime\r\n"));
+        xprintf_P( PSTR("          awake,sleep,pha01,pha10,phb01,phb10\r\n"));
+        xprintf_P( PSTR("  valve {A,B} {open,close}\r\n"));
+       
         
     }  else if ( !strcmp_P( strupr(argv[1]), PSTR("READ"))) {
 		xprintf_P( PSTR("-read:\r\n"));
@@ -88,17 +130,20 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("  serial,devid\r\n"));
         xprintf_P( PSTR("  ainput {n}\r\n"));
         xprintf_P( PSTR("  cnt {0,1}\r\n"));
+        xprintf_P( PSTR("  rs485a\r\n"));
         
     }  else if ( !strcmp_P( strupr(argv[1]), PSTR("CONFIG"))) {
 		xprintf_P( PSTR("-config:\r\n"));
         xprintf_P( PSTR("  default\r\n"));
+        xprintf_P( PSTR("  dlgid\r\n"));
         xprintf_P( PSTR("  save,load\r\n"));
         xprintf_P( PSTR("  timerpoll, timerdial, samples {1..10}\r\n"));
         xprintf_P( PSTR("  pwrmodo {continuo,discreto,mixto}, pwron {hhmm}, pwroff {hhmm}\r\n"));
         xprintf_P( PSTR("  debug {analog,counters,comms,modbus,piloto,none} {true/false}\r\n"));
         xprintf_P( PSTR("  ainput {0..%d} enable{true/false} aname imin imax mmin mmax offset\r\n"),( NRO_ANALOG_CHANNELS - 1 ) );
         xprintf_P( PSTR("  counter {0..%d} enable{true/false} cname magPP modo(PULSO/CAUDAL),rbsize\r\n"), ( NRO_COUNTER_CHANNELS - 1 ) );
- 
+        xprintf_P( PSTR("  piloto enable{true/false},ppr {nn},pwidth {nn}\r\n"));
+        xprintf_P( PSTR("         slot {idx} {hhmm} {pout}\r\n"));
         
 	} else if (!strcmp_P( strupr(argv[1]), PSTR("RESET"))) {
 		xprintf_P( PSTR("-reset\r\n"));
@@ -134,7 +179,28 @@ static void cmdResetFunction(void)
     
     // Reset memory ??
     if (!strcmp_P( strupr(argv[1]), PSTR("MEMORY"))) {
-       
+        
+        /*
+         * No puedo estar usando la memoria !!!
+         */     
+        
+        if ( xHandle_tkCtl != NULL )
+            vTaskSuspend( xHandle_tkSys );
+        
+        if ( xHandle_tkRS485A != NULL )
+            vTaskSuspend( xHandle_tkRS485A );
+        
+        if ( xHandle_tkWAN != NULL )
+            vTaskSuspend( xHandle_tkWAN );
+        
+        if ( !strcmp_P( strupr(argv[2]), PSTR("SOFT"))) {
+			FS_format(false );
+		} else if ( !strcmp_P( strupr(argv[2]), PSTR("HARD"))) {
+			FS_format(true);
+		} else {
+			xprintf_P( PSTR("ERROR\r\nUSO: reset memory {hard|soft}\r\n"));
+			return;
+		}
     }
     
     xprintf("Reset..\r\n");
@@ -147,16 +213,27 @@ static void cmdStatusFunction(void)
 
     // https://stackoverflow.com/questions/12844117/printing-defined-constants
 
+fat_s l_fat;
+
     xprintf("Spymovil %s %s TYPE=%s, VER=%s %s \r\n" , HW_MODELO, FRTOS_VERSION, FW_TYPE, FW_REV, FW_DATE);
  
+    // Memoria
+    FAT_read(&l_fat);
+	xprintf_P( PSTR("FileSystem: blockSize=%d,rcdSize=%d,blocks=%d,wrPtr=%d,rdPtr=%d,count=%d\r\n"),FS_PAGE_SIZE, sizeof(dataRcd_s), FF_MAX_RCDS, l_fat.head,l_fat.tail, l_fat.count );
+
     xprintf_P(PSTR("Config:\r\n"));
     xprintf_P(PSTR(" date: %s\r\n"), RTC_logprint(FORMAT_LONG));
+    xprintf_P(PSTR(" dlgid: %s\r\n"), systemConf.dlgid );
+    xprintf_P(PSTR(" signature: %s\r\n"), NVMEE_read_serial() );
     xprintf_P(PSTR(" timerdial=%d\r\n"), systemConf.timerdial);
     xprintf_P(PSTR(" timerpoll=%d\r\n"), systemConf.timerpoll);
     xprintf_P(PSTR(" samples=%d\r\n"), systemConf.samples_count);
 
+    print_pwr_configuration();
+    WAN_print_configuration();
 	ainputs_print_configuration();
     counters_print_configuration();
+    piloto_print_configuration();
     
     xprintf_P(PSTR("Values:\r\n"));
     xprintf_P(PSTR(" Frame: "));
@@ -270,6 +347,49 @@ static void cmdWriteFunction(void)
 
     FRTOS_CMD_makeArgv();
        
+    // PILOTO
+    if ( strcmp_P( strupr(argv[1]), PSTR("PILOTO")) == 0 ) {
+		piloto_cmd_set_presion(argv[2]) ? pv_snprintfP_OK() : pv_snprintfP_ERR();
+		return;
+	}  
+    
+    // STEPPER
+    if (!strcmp_P( strupr(argv[1]), PSTR("STEPPER"))  ) {
+        stepper_test( argv[2],argv[3],argv[4],argv[5], argv[6])? pv_snprintfP_OK() : pv_snprintfP_ERR();
+        return;
+    }
+    
+    // DRV8814
+    if (!strcmp_P( strupr(argv[1]), PSTR("DRV8814"))  ) {
+        DRV8814_test(argv[2],argv[3])? pv_snprintfP_OK() : pv_snprintfP_ERR();
+        return;
+    }
+    
+    // K1
+    if (!strcmp_P( strupr(argv[1]), PSTR("K1")) ) {
+        if (!strcmp_P( strupr(argv[2]), PSTR("OPEN")) ) {
+            RELE_K1_OPEN();
+            pv_snprintfP_OK();
+            return;
+        }
+        if (!strcmp_P( strupr(argv[2]), PSTR("CLOSE")) ) {
+            RELE_K1_CLOSE();
+            pv_snprintfP_OK();
+            return;
+        }
+        pv_snprintfP_ERR();
+        return; 
+       
+	}
+
+    // RS485A
+    // write rs485a {string}
+    if ((strcmp_P( strupr(argv[1]), PSTR("RS485A")) == 0) ) {
+        xfprintf_P( fdRS485A, PSTR("%s\r\n"), argv[2]);
+        pv_snprintfP_OK();
+        return;
+    }
+    
     // write VSENSORS420 on/off
 	if (!strcmp_P( strupr(argv[1]), PSTR("VSENSORS420")) ) {
         if (!strcmp_P( strupr(argv[2]), PSTR("ON")) ) {
@@ -336,7 +456,19 @@ static void cmdConfigFunction(void)
     
     FRTOS_CMD_makeArgv();
     
- 
+    // DLGID
+	if (!strcmp_P( strupr(argv[1]), PSTR("DLGID"))) {
+		if ( argv[2] != NULL ) {
+            memset(systemConf.dlgid,'\0', sizeof(systemConf.dlgid) );
+			memcpy(systemConf.dlgid, argv[2], sizeof(systemConf.dlgid));
+			systemConf.dlgid[DLGID_LENGTH - 1] = '\0';
+			pv_snprintfP_OK();
+               return;
+		}
+		pv_snprintfP_ERR();
+		return;
+	}
+
     // DEFAULT
 	// config default
 	if (!strcmp_P( strupr(argv[1]), PSTR("DEFAULT"))) {
@@ -348,7 +480,7 @@ static void cmdConfigFunction(void)
 	// SAVE
 	// config save
 	if (!strcmp_P( strupr(argv[1]), PSTR("SAVE"))) {       
-		( save_config_in_NVM() != -1 )?  pv_snprintfP_OK() : pv_snprintfP_ERR();
+		( save_config_in_NVM() == true )?  pv_snprintfP_OK() : pv_snprintfP_ERR();
 		return;
 	}
     

@@ -1,249 +1,274 @@
-/*
- * l_steppers.c
- *
- *  Created on: 11 ene. 2021
- *      Author: pablo
- */
 
 #include "steppers.h"
-#include "drv8814.h"
-#include <avr/pgmspace.h>
-#include <string.h>
-#include <stdlib.h>
-#include "xprintf.h"
 
-static int8_t sequence;
+// https://www.monolithicpower.com/bipolar-stepper-motors-part-i-control-modes
 
-void stepper_drive( t_stepper_dir dir, uint16_t npulses, uint16_t dtime, uint16_t ptime );
+static int8_t phase = 0;
+static uint16_t cb_steps;
+static uint16_t cb_dtime;
+static bool motor_running;
+static t_stepper_dir cb_dir;
 
-//------------------------------------------------------------------------------------
-void stepper_cmd( char *s_dir, char *s_npulses, char *s_dtime, char *s_ptime )
+TimerHandle_t stepper_xTimer;
+StaticTimer_t stepper_xTimerBuffer;
+void stepper_TimerCallback( TimerHandle_t xTimer );
+void stepper_rollback(void);
+
+//
+//------------------------------------------------------------------------------
+void stepper_init_outofrtos(void)
 {
-uint16_t npulses, dtime, ptime;
-t_stepper_dir dir;
+	// Configuro el timer que va a generar los pulsos del stepper
+	// Se debe correr antes que empieze el RTOS
 
-	//xprintf_P(PSTR("STEPPER DEBUG: %s, %s, %s\r\n"), s_dir, s_npulses, s_dtime);
+	stepper_xTimer = xTimerCreateStatic ("STEPPER",
+			pdMS_TO_TICKS( 100 ),
+			pdTRUE,
+			( void * ) 0,
+			stepper_TimerCallback,
+			&stepper_xTimerBuffer
+			);
+    
+}
+//------------------------------------------------------------------------------
+void stepper_TimerCallback( TimerHandle_t xTimer )
+{
+	// Genera un pulso.
+	// Cuando la cuenta de pulsos llega a 0, se desactiva.
 
-	if ( strcmp_P( strupr(s_dir), PSTR("FW")) == 0 ) {
-		dir = STEPPER_FWD;
-	} else if ( strcmp_P( strupr(s_dir), PSTR("RV")) == 0) {
-		dir = STEPPER_REV;
-	} else {
-		xprintf_P(PSTR("Error en direccion\r\n"));
-		return;
+    stepper_set_phase(phase, cb_dtime);
+    stepper_next_phase(cb_dir);
+        
+	if ( cb_steps-- == 0 ) {
+		// Detengo el timer.
+        motor_running = false;
+		xTimerStop( xTimer, 10 );
+	}
+    
+    // Controlo los fin de carrera
+    /*
+    if ( (cb_steps % 10) == 0 ) {
+        if ( FC_alta_read() == 0 ) {
+            xTimerStop( stepper_xTimer, 10 );
+            DRV8814_sleep();
+            xprintf_P(PSTR("Steppers: STOP X FIN DE CARRERA ALTA.\r\n"));
+            return;
+        }
+        
+        if ( FC_baja_read() == 0 ) {
+            xTimerStop( stepper_xTimer, 10 );
+            DRV8814_sleep();
+            xprintf_P(PSTR("Steppers: STOP X FIN DE CARRERA BAJA.\r\n"));
+            return;
+        }
+    }
+     */
+
+}
+//------------------------------------------------------------------------------
+void stepper_init_phase(void)
+{
+	phase = 2;
+}
+//------------------------------------------------------------------------------
+void stepper_next_phase( t_stepper_dir dir)
+{
+	// Genera la secuencia que debe aplicar el stepper para moverse en la direccion dir.
+
+	if ( dir == STEPPER_FWD ) {
+		phase++;
+		if ( phase == 4) {
+			phase = 0;
+		}
+
 	}
 
-	npulses = atoi(s_npulses);
-	dtime = atoi(s_dtime);
-	ptime = atoi(s_ptime);
+	if ( dir == STEPPER_REV ) {
+		phase--;
+		if ( phase == -1 ) {
+			phase = 3;
+		}
+	}
 
-	//xprintf_P(PSTR("STEPPER DEBUG: %s, %s, %s\r\n"), s_dir, s_npulses, s_dtime);
-
-	stepper_drive(dir, npulses, dtime, ptime);
 }
-//------------------------------------------------------------------------------------
-void stepper_start(void)
+//------------------------------------------------------------------------------
+void stepper_set_phase( uint8_t phase, uint16_t dtime)
 {
-	sequence = 2;
+	// Aplica el pulso al motor y genera la siguiente secuencia
+     
+	switch (phase) {
+	case 0:
+		// A+A-
+		DRV8814_pulse_Amas_Amenos(dtime);
+		break;
+	case 1:
+		// B+B-
+		DRV8814_pulse_Bmas_Bmenos(dtime);
+		break;
+	case 2:
+		// B- 180 degree
+        // A-A+
+		DRV8814_pulse_Amenos_Amas(dtime);
+		break;
+	case 3:
+		// A-, 90 degree
+        // B-B+
+		DRV8814_pulse_Bmenos_Bmas(dtime);
+		break;
+	}
+
 }
-//------------------------------------------------------------------------------------
-void stepper_drive( t_stepper_dir dir, uint16_t npulses, uint16_t dtime, uint16_t ptime )
+//------------------------------------------------------------------------------
+void stepper_move( t_stepper_dir dir, uint16_t npulses, uint16_t dtime, uint16_t ptime )
 {
 	/*
-	 * Genera en el stepper una cantidad de pulsos npulses, separados
-	 * un tiempo dtime entre c/u, de modo de girar el motor en la
-	 * direccion dir.
+	 * Genera en el stepper una cantidad de pulsos npulses
+     * En ancho de c/pulso es dtime.
+     * La separacion entre pulsos es ptime ( periodo = 2*ptime)
+     * separados
+	 *
+	 */
+
+	// Activo el driver
+    
+    xTimerStop( stepper_xTimer, 10 );
+	DRV8814_awake();
+	vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+
+	// Pongo la secuencia incial en 2 para que puede moverme para adelante o atras
+	// sin problemas de incializacion
+	//stepper_init_sequence();
+    cb_steps = npulses;
+    cb_dir = dir;
+    cb_dtime = dtime;
+    
+    motor_running = true;
+    xTimerChangePeriod(stepper_xTimer, ( ptime * 2) / portTICK_PERIOD_MS , 10 );
+	xTimerStart( stepper_xTimer, 10 );
+    
+	// Desactivo el driver
+	//DRV8814_sleep();
+}
+//------------------------------------------------------------------------------
+void stepper_rollback(void) 
+{
+    ( cb_dir == STEPPER_FWD) ? (cb_dir = STEPPER_REV) : (cb_dir = STEPPER_FWD);
+    cb_steps = 1000;
+    xTimerStart( stepper_xTimer, 10 );
+    while(motor_running) {
+        vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+        // Controlo fines de carrera
+        if ( ( FC1_read() == 1) && ( FC2_read() == 1) ) {
+            xTimerStop( stepper_xTimer, 10 );
+            break;
+        }
+    }
+    xprintf_P(PSTR("Steppers: ROLLBACK END.(steps=%d)\r\n"), cb_steps);
+    
+}
+//------------------------------------------------------------------------------
+void stepper_move_001( t_stepper_dir dir, uint16_t npulses, uint16_t dtime, uint16_t ptime )
+{
+	/*
+	 * Genera en el stepper una cantidad de pulsos npulses
+     * En ancho de c/pulso es dtime.
+     * La separacion entre pulsos es ptime
+     * separados
 	 *
 	 */
 
 uint16_t steps;
 
 	// Activo el driver
-	xprintf_P(PSTR("STEPPER driver pwr on\r\n"));
-	stepper_pwr_on();
-	// Espero 15s que se carguen los condensasores
-	vTaskDelay( ( TickType_t)( ptime*1000 / portTICK_RATE_MS ) );
-	stepper_awake();
-	vTaskDelay( ( TickType_t)( 100 / portTICK_RATE_MS ) );
+	DRV8814_awake();
+	vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
 
-	xprintf_P(PSTR("STEPPER steps...\r\n"));
 	// Pongo la secuencia incial en 2 para que puede moverme para adelante o atras
 	// sin problemas de incializacion
-	stepper_start();
+	//stepper_init_sequence();
 	for (steps=0; steps < npulses; steps++) {
-
-		stepper_sequence(dir);
-
-		xprintf_P(PSTR("STEPPER pulse %03d, sec=%d\r\n"), steps, sequence);
-
-		stepper_pulse(sequence, dtime);
+		stepper_set_phase(phase, dtime);
+        stepper_next_phase(dir);
+        vTaskDelay( ( TickType_t)( ptime / portTICK_PERIOD_MS ) );
+        xprintf_P(PSTR("p(%d) %03d,\r\n"), phase, steps);
 	}
-
-	xprintf_P(PSTR("STEPPER driver pwr off\r\n"));
+ 
 	// Desactivo el driver
-	stepper_sleep();
-	stepper_pwr_off();
-
+	DRV8814_sleep();
 }
-//------------------------------------------------------------------------------------
-void stepper_awake(void)
+//------------------------------------------------------------------------------
+bool stepper_test( char *s_cmd, char *s_dir, char *s_npulses, char *s_dtime, char *s_ptime)
 {
-	// Saco al driver 8814 de reposo.
-	IO_set_RES();
-	IO_set_SLP();
+    
+t_stepper_dir dir;
+uint16_t npulses = atoi(s_npulses);
+uint16_t dtime = atoi(s_dtime);
+uint16_t ptime = atoi(s_ptime);
+
+
+    if (!strcmp_P( strupr(s_cmd), PSTR("STOP"))) {
+        stepper_stop();
+        return(true);
+    }
+
+    if (!strcmp_P( strupr(s_cmd), PSTR("AWAKE"))) {
+        DRV8814_awake();
+        return(true);
+    }
+
+    if (!strcmp_P( strupr(s_cmd), PSTR("SLEEP"))) {
+        DRV8814_sleep();
+        return(true);
+    }
+
+    if (!strcmp_P( strupr(s_cmd), PSTR("PHA01"))) {
+        DRV8814_pulse_Amenos_Amas(0);
+        return(true);
+    }
+
+    if (!strcmp_P( strupr(s_cmd), PSTR("PHA10"))) {
+        DRV8814_pulse_Amas_Amenos(0);
+        return(true);
+    }
+
+    if (!strcmp_P( strupr(s_cmd), PSTR("PHB01"))) {
+        DRV8814_pulse_Bmenos_Bmas(0);
+        return(true);
+    }
+
+    if (!strcmp_P( strupr(s_cmd), PSTR("PHB10"))) {
+        DRV8814_pulse_Bmas_Bmenos(0);
+        return(true);
+    }
+
+    if (!strcmp_P( strupr(s_cmd), PSTR("MOVE"))) {
+     
+        if (!strcmp_P( strupr(s_dir), PSTR("FW"))) {
+            dir = STEPPER_FWD;
+        } else if (!strcmp_P( strupr(s_dir), PSTR("REV"))) {
+            dir = STEPPER_REV;
+        } else {
+            return (false);  
+        }
+    
+        xprintf_P(PSTR("Steppers: dir=%d, pulsos=%d, pw=%d, T=%d\r\n"), dir, npulses, dtime,ptime);
+        stepper_move( dir, npulses, dtime, ptime );
+        return (true);
+    }
+    
+    return(false);
+
 }
-//------------------------------------------------------------------------------------
-void stepper_sleep(void)
+//------------------------------------------------------------------------------
+void stepper_stop(void)
 {
-	// Pongo en reposo
-	IO_clr_RES();
-	IO_clr_SLP();
+    motor_running = false;
+    xTimerStop( stepper_xTimer, 10 );
+    DRV8814_sleep();
 }
-//------------------------------------------------------------------------------------
-void pulse_Amas_Amenos(uint16_t dtime )
+//------------------------------------------------------------------------------
+bool stepper_is_running(void)
 {
-	// Aout1 = H, Aout2 = L
-	IO_set_PHA();	// Direccion del pulso forward
-
-	IO_set_ENA();	// Habilito el pulso
-	vTaskDelay( ( TickType_t)( dtime / portTICK_RATE_MS ) );
-	IO_clr_ENA();	// Deshabilito el pulso
-
-
+    return motor_running;
 }
-//------------------------------------------------------------------------------------
-void pulse_Amenos_Amas(uint16_t dtime )
-{
-	// Aout1 = L, Aout2 = H
-
-	IO_clr_PHA();	// Direccion del pulso reverse
-
-	IO_set_ENA();	// Habilito el pulso
-	vTaskDelay( ( TickType_t)( dtime / portTICK_RATE_MS ) );
-	IO_clr_ENA();	// Deshabilito el pulso
-
-}
-//------------------------------------------------------------------------------------
-void pulse_Bmas_Bmenos(uint16_t dtime )
-{
-	// Bout1 = H, Bout2 = L
-
-	IO_set_PHB();	// Direccion del pulso forward
-
-	IO_set_ENB();	// Habilito el pulso
-	vTaskDelay( ( TickType_t)( dtime / portTICK_RATE_MS ) );
-	IO_clr_ENB();	// Deshabilito el pulso
-}
-//------------------------------------------------------------------------------------
-void pulse_Bmenos_Bmas(uint16_t dtime )
-{
-	// Bout1 = L, Bout2 = H
-
-	IO_clr_PHB();	// Direccion del pulso reverse
-
-	IO_set_ENB();	// Habilito el pulso
-	vTaskDelay( ( TickType_t)( dtime / portTICK_RATE_MS ) );
-	IO_clr_ENB();	// Deshabilito el pulso
-}
-//------------------------------------------------------------------------------------
-void stepper_sequence( t_stepper_dir dir)
-{
-	// Genera la secuencia que debe aplicar el stepper para moverse en la direccion dir.
-
-	if ( dir == STEPPER_FWD ) {
-		sequence++;
-		if ( sequence == 4) {
-			sequence = 0;
-		}
-	}
-
-	if ( dir == STEPPER_REV ) {
-		sequence--;
-		if ( sequence == -1 ) {
-			sequence = 3;
-		}
-	}
-
-}
-//------------------------------------------------------------------------------------
-void stepper_pulse(t_stepper_dir dir, uint16_t dtime)
-{
-	// Aplica el pulso al motor y genera la siguiente secuencia
-
-	//xprintf_P(PSTR("STEPPER pulse: sec=%d\r\n"), sequence);
-	switch (sequence) {
-	case 0:
-		// A+A-
-		pulse_Amas_Amenos(dtime);
-		break;
-	case 1:
-		// B+B-
-		pulse_Bmas_Bmenos(dtime);
-		break;
-	case 2:
-		// B- 180 degree
-		pulse_Amenos_Amas(dtime);
-		break;
-	case 3:
-		// A-, 90 degree
-		pulse_Bmenos_Bmas(dtime);
-		break;
-	}
-
-	stepper_sequence(dir);
-}
-//------------------------------------------------------------------------------------
-void stepper_pulse1(t_stepper_dir dir, uint16_t dtime)
-{
-
-	switch (sequence) {
-	case 0:
-		// A+, B+
-		IO_set_PHA();
-		IO_set_PHB();
-		//
-		IO_set_ENA();
-		IO_set_ENB();
-		vTaskDelay( ( TickType_t)( dtime / portTICK_RATE_MS ) );
-		IO_clr_ENA();
-		IO_clr_ENB();
-		break;
-	case 1:
-		// A-, B+
-		IO_clr_PHA();
-		IO_set_PHB();
-		//
-		IO_set_ENA();
-		IO_set_ENB();
-		vTaskDelay( ( TickType_t)( dtime / portTICK_RATE_MS ) );
-		IO_clr_ENA();
-		IO_clr_ENB();
-		break;
-	case 2:
-		// A-, B-
-		IO_clr_PHA();
-		IO_clr_PHB();
-		//
-		IO_set_ENA();
-		IO_set_ENB();
-		vTaskDelay( ( TickType_t)( dtime / portTICK_RATE_MS ) );
-		IO_clr_ENA();
-		IO_clr_ENB();
-		break;
-	case 3:
-		// A+, B-
-		IO_set_PHA();
-		IO_clr_PHB();
-		//
-		IO_set_ENA();
-		IO_set_ENB();
-		vTaskDelay( ( TickType_t)( dtime / portTICK_RATE_MS ) );
-		IO_clr_ENA();
-		IO_clr_ENB();
-		break;
-	}
-
-	stepper_sequence(dir);
-}
-//------------------------------------------------------------------------------------
-
+//------------------------------------------------------------------------------

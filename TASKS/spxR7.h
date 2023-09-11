@@ -54,15 +54,20 @@ extern "C" {
 #include "eeprom.h"
 #include "ina3221.h"
 #include "nvmee.h"
+#include "linearBuffer.h"
+#include "fileSystem.h"
+#include "drv8814.h"
+#include "steppers.h"
     
 #include "ainputs.h"
 #include "contadores.h"
+#include "piloto.h"
 
 //------------------------------------------------------------------------------
 // DEFINES
 //------------------------------------------------------------------------------
-#define FW_REV "1.0.0"
-#define FW_DATE "@ 20230905"
+#define FW_REV "1.1.0"
+#define FW_DATE "@ 20230911"
 #define HW_MODELO "SPXR7 FRTOS R001 HW:XMEGA256A3B"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "SPXR7"
@@ -81,6 +86,9 @@ extern "C" {
 #define tkCtl_STACK_SIZE		384
 #define tkCmd_STACK_SIZE		384
 #define tkSys_STACK_SIZE		384
+#define tkRS485A_STACK_SIZE		384
+#define tkWAN_STACK_SIZE		384
+#define tkPILOTO_STACK_SIZE		384
     
 StaticTask_t xTask_Ctl_Buffer_Ptr;
 StackType_t xTask_Ctl_Buffer [tkCtl_STACK_SIZE];
@@ -91,12 +99,24 @@ StackType_t xTask_Cmd_Buffer [tkCmd_STACK_SIZE];
 StaticTask_t xTask_Sys_Buffer_Ptr;
 StackType_t xTask_Sys_Buffer [tkSys_STACK_SIZE];
 
+StaticTask_t xTask_RS485A_Buffer_Ptr;
+StackType_t xTask_RS485A_Buffer [tkRS485A_STACK_SIZE];
+
+StaticTask_t xTask_WAN_Buffer_Ptr;
+StackType_t xTask_WAN_Buffer [tkWAN_STACK_SIZE];
+
+StaticTask_t xTask_PILOTO_Buffer_Ptr;
+StackType_t xTask_PILOTO_Buffer [tkPILOTO_STACK_SIZE];
+
 
 #define tkCtl_TASK_PRIORITY	 	( tskIDLE_PRIORITY + 1 )
 #define tkCmd_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 #define tkSys_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
+#define tkRS485A_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
+#define tkWAN_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
+#define tkPILOTO_TASK_PRIORITY 	( tskIDLE_PRIORITY + 1 )
 
-TaskHandle_t xHandle_idle, xHandle_tkCtl, xHandle_tkCmd, xHandle_tkSys;
+TaskHandle_t xHandle_idle, xHandle_tkCtl, xHandle_tkCmd, xHandle_tkSys, xHandle_tkRS485A, xHandle_tkWAN, xHandle_tkPILOTO;
 
 SemaphoreHandle_t sem_SYSVars;
 StaticSemaphore_t SYSVARS_xMutexBuffer;
@@ -106,6 +126,10 @@ StaticSemaphore_t SYSVARS_xMutexBuffer;
 void tkCtl(void * pvParameters);
 void tkCmd(void * pvParameters);
 void tkSys(void * pvParameters);
+void tkRS485A(void * pvParameters);
+void tkWAN(void * pvParameters);
+void tkWAN(void * pvParameters);
+void tkPiloto(void * pvParameters);
 
 typedef struct {
     float l_ainputs[NRO_ANALOG_CHANNELS];
@@ -125,15 +149,21 @@ typedef enum { WAN_RS485B = 0, WAN_NBIOT } wan_port_t;
 
 typedef enum { PWR_CONTINUO = 0, PWR_DISCRETO, PWR_MIXTO } pwr_modo_t;
 
+#define DLGID_LENGTH		12
+
 struct {
+    char dlgid[DLGID_LENGTH];
     uint16_t timerpoll;
     uint16_t timerdial;
     pwr_modo_t pwr_modo;
     uint16_t pwr_hhmm_on;
     uint16_t pwr_hhmm_off;
     uint8_t samples_count;      // Nro. de muestras para promediar una medida
+    uint8_t alarm_level;        // Nivel de variacion de medidas para transmitir.
+
 	ainputs_conf_t ainputs_conf;
     counters_conf_t counters_conf;
+    piloto_conf_t piloto_conf;
     
     // El checksum SIEMPRE debe ser el ultimo byte !!!!!
     uint8_t checksum;
@@ -152,11 +182,35 @@ bool load_config_from_NVM(void);
 uint8_t checksum( uint8_t *s, uint16_t size );
 bool config_timerdial ( char *s_timerdial );
 bool config_timerpoll ( char *s_timerpoll );
+bool config_pwrmodo ( char *s_pwrmodo );
+bool config_pwron ( char *s_pwron );
+bool config_pwroff ( char *s_pwroff );
 bool config_samples ( char *s_samples );
+bool config_almlevel ( char *s_almlevel );
+void data_resync_clock( char *str_time, bool force_adjust);
+void reset_memory_remote(void);
+void print_pwr_configuration(void);
+
 bool poll_data(dataRcd_s *dataRcd);
 void xprint_dr(dataRcd_s *dr);
 dataRcd_s *get_system_dr(void);
 
+uint8_t confbase_hash(void);
+
+// Mensajes entre tareas
+#define SGN_FRAME_READY		0x01
+// Mensajes entre tareas
+#define DATA_FRAME_READY			0x01	//
+
+#define WAN_RX_BUFFER_SIZE 300
+char wan_buffer[WAN_RX_BUFFER_SIZE];
+lBuffer_s wan_lbuffer;
+
+void WAN_put(uint8_t c);
+void WAN_print_configuration(void);
+void WAN_kill_task(void);
+bool WAN_process_data_rcd( dataRcd_s *dataRcd);
+void WAN_config_debug(bool debug );
 
 #ifdef	__cplusplus
 }
