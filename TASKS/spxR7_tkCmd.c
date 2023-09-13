@@ -117,9 +117,11 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("  piloto {pres}\r\n"));        
         xprintf_P( PSTR("  drv8814 {SLEEP,RESET,AENA,BENA,APH,BPH},{SET,CLEAR}\r\n"));
         xprintf_P( PSTR("  drv8814 {FC1,FC2}, GET\r\n"));
+        xprintf_P( PSTR("  drv8814 pwr {on|off}\r\n"));
         xprintf_P( PSTR("  stepper move {FW,REV},npulses,dtime,ptime\r\n"));
         xprintf_P( PSTR("          awake,sleep,pha01,pha10,phb01,phb10\r\n"));
         xprintf_P( PSTR("  valve {A,B} {open,close}\r\n"));
+        xprintf_P( PSTR("  consigna {diurna|nocturna}\r\n"));
        
         
     }  else if ( !strcmp_P( strupr(argv[1]), PSTR("READ"))) {
@@ -127,6 +129,7 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("  (ee,nvmee,rtcram) {pos} {lenght} {debug}\r\n"));
         xprintf_P( PSTR("  rtc {short | long }\r\n"));
         xprintf_P( PSTR("  ina {a|b} {conf|chXshv|chXbusv|mfid|dieid}\r\n"));
+        xprintf_P( PSTR("  cnt {0,1}, fc1,fc_alta,fc2,fc_baja\r\n"));
         xprintf_P( PSTR("  serial,devid\r\n"));
         xprintf_P( PSTR("  ainput {n}\r\n"));
         xprintf_P( PSTR("  cnt {0,1}\r\n"));
@@ -144,6 +147,7 @@ static void cmdHelpFunction(void)
         xprintf_P( PSTR("  counter {0..%d} enable{true/false} cname magPP modo(PULSO/CAUDAL),rbsize\r\n"), ( NRO_COUNTER_CHANNELS - 1 ) );
         xprintf_P( PSTR("  piloto enable{true/false},ppr {nn},pwidth {nn}\r\n"));
         xprintf_P( PSTR("         slot {idx} {hhmm} {pout}\r\n"));
+        xprintf_P( PSTR("  consigna enable {true|false| hhmm_diurna hhmm_nocturna\r\n"));
         
 	} else if (!strcmp_P( strupr(argv[1]), PSTR("RESET"))) {
 		xprintf_P( PSTR("-reset\r\n"));
@@ -234,6 +238,7 @@ fat_s l_fat;
 	ainputs_print_configuration();
     counters_print_configuration();
     piloto_print_configuration();
+    consigna_print_configuration();
     
     xprintf_P(PSTR("Values:\r\n"));
     xprintf_P(PSTR(" Frame: "));
@@ -245,6 +250,26 @@ static void cmdReadFunction(void)
     
     FRTOS_CMD_makeArgv();
   
+    if (! strcmp_P( strupr(argv[1]), PSTR("FC1") ) ) {
+        xprintf_P(PSTR("FC1=%d\r\n"), FC1_read() );
+        return;
+    }
+
+    if (! strcmp_P( strupr(argv[1]), PSTR("FC_ALTA") ) ) {
+        xprintf_P(PSTR("FC_alta(1)=%d (1:open,0:close)\r\n"), FC1_read() );
+        return;
+    }
+    
+    if (! strcmp_P( strupr(argv[1]), PSTR("FC2") ) ) {
+        xprintf_P(PSTR("FC2=%d\r\n"), FC2_read() );
+        return;
+    }
+    
+    if (! strcmp_P( strupr(argv[1]), PSTR("FC_BAJA") ) ) {
+        xprintf_P(PSTR("FC_baja(2)=%d (1:open,0:close)\r\n"), FC2_read() );
+        return;
+    }
+
     // CNT{0,1}
 	// read cnt
 	if (!strcmp_P( strupr(argv[1]), PSTR("CNT")) ) {
@@ -347,6 +372,24 @@ static void cmdWriteFunction(void)
 
     FRTOS_CMD_makeArgv();
        
+    // CONSIGNA
+    // write consigna {diurna|nocturna}
+    if (!strcmp_P( strupr(argv[1]), PSTR("CONSIGNA")) ) {
+        if (!strcmp_P( strupr(argv[2]), PSTR("DIURNA")) ) {
+            consigna_set_diurna();
+            pv_snprintfP_OK();
+            return;
+        }
+        if (!strcmp_P( strupr(argv[2]), PSTR("NOCTURNA")) ) {
+            consigna_set_nocturna();
+            pv_snprintfP_OK();
+            return;
+        }
+        pv_snprintfP_ERR();
+        return; 
+       
+	}
+    
     // PILOTO
     if ( strcmp_P( strupr(argv[1]), PSTR("PILOTO")) == 0 ) {
 		piloto_cmd_set_presion(argv[2]) ? pv_snprintfP_OK() : pv_snprintfP_ERR();
@@ -455,6 +498,12 @@ static void cmdConfigFunction(void)
 {
     
     FRTOS_CMD_makeArgv();
+    
+    // CONSIGNA
+    // config consigna enable {true|false| hhmm_diurna hhmm_nocturna
+    if (!strcmp_P( strupr(argv[1]), PSTR("CONSIGNA"))) {
+        consigna_config( argv[2], argv[3], argv[4]) ? pv_snprintfP_OK() : pv_snprintfP_ERR();
+    }
     
     // DLGID
 	if (!strcmp_P( strupr(argv[1]), PSTR("DLGID"))) {

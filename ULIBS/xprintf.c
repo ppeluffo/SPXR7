@@ -66,8 +66,10 @@ va_list args;
 int i = -1;
 
     // Los fd RS485 requieren del RTS !!
-    if ( fd == fdRS485A )
+    if ( fd == fdRS485A ) {
         SET_RTS_RS485A();
+        vTaskDelay( ( TickType_t)( 10 ) );
+    }
 
 	// Espero el semaforo del buffer en forma persistente.
 	while ( xSemaphoreTake( sem_STDOUT, ( TickType_t ) 5 ) != pdTRUE )
@@ -83,7 +85,7 @@ int i = -1;
 	xSemaphoreGive( sem_STDOUT );
     
     if ( fd == fdRS485A ) {
-        vTaskDelay( ( TickType_t)( 2 ) );
+        vTaskDelay( ( TickType_t)( 5 ) );
         CLEAR_RTS_RS485A();
     }
    
@@ -137,8 +139,10 @@ va_list args;
 int i;
 
     // Los fd RS485 requieren del RTS !!
-    if ( fd == fdRS485A ) 
+    if ( fd == fdRS485A ) {
         SET_RTS_RS485A();
+        vTaskDelay( ( TickType_t)( 10 ) );
+    }
 
 	// Espero el semaforo del buffer en forma persistente.
 	while ( xSemaphoreTake( sem_STDOUT, ( TickType_t ) 5 ) != pdTRUE )
@@ -156,7 +160,7 @@ int i;
 	xSemaphoreGive( sem_STDOUT );
     
     if ( fd == fdRS485A ) {
-        vTaskDelay( ( TickType_t)( 2 ) );
+        vTaskDelay( ( TickType_t)( 5 ) );
        CLEAR_RTS_RS485A();
     }
     
@@ -188,8 +192,10 @@ int xfputs( int fd, const char *str )
 int i = 0;
 
     // Los fd RS485 requieren del RTS !!
-    if ( fd == fdRS485A )
+    if ( fd == fdRS485A ) {
         SET_RTS_RS485A();
+        vTaskDelay( ( TickType_t)( 10 ) );
+    }
 
 	while ( xSemaphoreTake( sem_STDOUT, ( TickType_t ) 5 ) != pdTRUE )
 		vTaskDelay( ( TickType_t)( 5 ) );
@@ -201,7 +207,7 @@ int i = 0;
     xSemaphoreGive( sem_STDOUT );
     
     if ( fd == fdRS485A ) {
-        vTaskDelay( ( TickType_t)( 2 ) );
+        vTaskDelay( ( TickType_t)( 5 ) );
         CLEAR_RTS_RS485A();
     }
     
@@ -234,8 +240,10 @@ void xfputChar(int fd, unsigned char c)
     //return;
     
     // Los fd RS485 requieren del RTS !!
-    if ( fd == fdRS485A )
+    if ( fd == fdRS485A ) {
         SET_RTS_RS485A();
+        vTaskDelay( ( TickType_t)( 10 ) );
+    }
     
     while ( xSemaphoreTake( sem_STDOUT, ( TickType_t ) 5 ) != pdTRUE )
 		vTaskDelay( ( TickType_t)( 5 ) );
@@ -247,7 +255,7 @@ void xfputChar(int fd, unsigned char c)
     xSemaphoreGive( sem_STDOUT );
     
     if ( fd == fdRS485A ) {
-        vTaskDelay( ( TickType_t)( 2 ) );
+        vTaskDelay( ( TickType_t)( 5 ) );
         CLEAR_RTS_RS485A();
     }
     

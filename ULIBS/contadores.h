@@ -30,20 +30,6 @@ extern "C" {
 #include "pines.h"
 #include "utils.h"
 
-#define CNT0_PORT	PORTB
-#define CNT0_PIN    1
-#define CNT0_PIN_bm	PIN1_bm
-#define CNT0_PIN_bp	PIN1_bp
-    
-#define CNT1_PORT	PORTB
-#define CNT1_PIN    2
-#define CNT1_PIN_bm	PIN2_bm
-#define CNT1_PIN_bp	PIN2_bp
-    
-// Los CNTx son inputs
-#define CNT0_CONFIG()    ( CNT0_PORT.DIR &= ~CNT0_PIN_bm )
-#define CNT1_CONFIG()    ( CNT1_PORT.DIR &= ~CNT1_PIN_bm )
-
 #define CNT_PARAMNAME_LENGTH	12
 #define NRO_COUNTER_CHANNELS     2
 

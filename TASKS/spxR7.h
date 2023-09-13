@@ -58,16 +58,18 @@ extern "C" {
 #include "fileSystem.h"
 #include "drv8814.h"
 #include "steppers.h"
+#include "valves.h"
     
 #include "ainputs.h"
 #include "contadores.h"
 #include "piloto.h"
+#include "consignas.h"
 
 //------------------------------------------------------------------------------
 // DEFINES
 //------------------------------------------------------------------------------
 #define FW_REV "1.1.0"
-#define FW_DATE "@ 20230911"
+#define FW_DATE "@ 20230913"
 #define HW_MODELO "SPXR7 FRTOS R001 HW:XMEGA256A3B"
 #define FRTOS_VERSION "FW:FreeRTOS V202111.00"
 #define FW_TYPE "SPXR7"
@@ -164,6 +166,7 @@ struct {
 	ainputs_conf_t ainputs_conf;
     counters_conf_t counters_conf;
     piloto_conf_t piloto_conf;
+    consigna_conf_t consigna_conf;
     
     // El checksum SIEMPRE debe ser el ultimo byte !!!!!
     uint8_t checksum;

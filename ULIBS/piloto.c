@@ -138,9 +138,16 @@ void piloto_consumidor(void)
             xprintf_P( PSTR("PILOTO CONS: new_press=%0.2f.\r\n"), consigna);
         }
     
+        // Proporciono corriente.
+        DRV8814_power_on();
+        // Espero 15s que se carguen los condensasores
+        vTaskDelay( ( TickType_t)( 25000 / portTICK_RATE_MS ) );
+    
         // Ajuste de presion
         FSM_ajuste_presion();
     
+        DRV8814_power_off();
+        
         // Borro el request.
         consigna = -1;
     }
@@ -551,7 +558,7 @@ int8_t slot;
         return;
     }
     
-    xprintf_P( PSTR(" status=enbled\r\n"));
+    xprintf_P( PSTR(" status=enabled\r\n"));
 	xprintf_P( PSTR(" pPulsosXrev=%d, pWidth=%d(ms)\r\n"), piloto_conf.pulsesXrev, piloto_conf.pWidth  );
     xprintf_P( PSTR(" ch_pA=%d, ch_pB=%d\r\n"), piloto_conf.ch_pA, piloto_conf.ch_pB);
 	xprintf_P( PSTR(" Slots:\r\n"));

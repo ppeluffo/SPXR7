@@ -236,11 +236,13 @@ void config_default(void)
     ainputs_config_defaults();
     counters_config_defaults();
     piloto_config_defaults();
+    consigna_config_defaults();
     
     // Actualizo las configuraciones locales en el systemConf
     ainputs_read_local_config(&systemConf.ainputs_conf);
     counters_read_local_config(&systemConf.counters_conf);
     piloto_read_local_config(&systemConf.piloto_conf);
+    consigna_read_local_config(&systemConf.consigna_conf);
     
 }
 //------------------------------------------------------------------------------
@@ -315,6 +317,8 @@ uint8_t cks;
     // Actualizo las configuraciones locales en systemConf
     ainputs_read_local_config(&systemConf.ainputs_conf);
     counters_read_local_config(&systemConf.counters_conf);
+    piloto_read_local_config( &systemConf.piloto_conf);
+    consigna_read_local_config(&systemConf.consigna_conf);
     
     cks = checksum ( (uint8_t *)&systemConf, ( sizeof(systemConf) - 1));
     systemConf.checksum = cks;    
@@ -348,6 +352,8 @@ uint8_t rd_cks, calc_cks;
     // Actualizo las configuraciones locales en el systemConf
     ainputs_update_local_config(&systemConf.ainputs_conf);
     counters_update_local_config(&systemConf.counters_conf);
+    piloto_update_local_config( &systemConf.piloto_conf);
+    consigna_update_local_config(&systemConf.consigna_conf);
     
     return(true);
 }

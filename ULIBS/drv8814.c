@@ -15,12 +15,26 @@ void DRV8814_init(void)
     CONFIG_DRV8814_BEN;
     CONFIG_DRV8814_APH;
     CONFIG_DRV8814_BPH;
+    CONFIG_DRV8814_PWR;
     //
 }
 // -----------------------------------------------------------------------------
 bool DRV8814_test( char *pinName, char *action)
 {
-           
+
+    if (! strcmp_P( strupr(pinName), PSTR("PWR") ) ) {
+        if (! strcmp_P( strupr(action), PSTR("ON"))) {
+            DRV8814_power_on();
+            return(true);
+        }
+        
+        if (!strcmp_P( strupr(action), PSTR("OFF"))) {
+            DRV8814_power_off();
+            return(true);
+        }
+        return (false);
+    }
+        
     if (! strcmp_P( strupr(pinName), PSTR("RESET") ) ) {
         if (! strcmp_P( strupr(action), PSTR("SET"))) {
             SET_DRV8814_RESET;

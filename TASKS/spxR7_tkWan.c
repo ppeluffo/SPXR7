@@ -42,6 +42,8 @@ static bool wan_process_frame_configCounters(void);
 static bool wan_process_rsp_configCounters(void);
 static bool wan_process_frame_configPiloto(void);
 static bool wan_process_rsp_configPiloto(void);
+static bool wan_process_frame_configConsigna(void);
+static bool wan_process_rsp_configConsigna(void);
 
 static bool wan_send_from_memory(void);
 static bool wan_process_frame_data(dataRcd_s *dr);
@@ -259,11 +261,13 @@ static void wan_state_online_config(void)
     wan_process_frame_configAinputs();
     wan_process_frame_configCounters();
     wan_process_frame_configPiloto();
+    //wan_process_frame_configConsigna();
     
     // Con todos los modulos configurados, los recargo
     ainputs_read_local_config(&systemConf.ainputs_conf);
     counters_read_local_config(&systemConf.counters_conf);
     piloto_read_local_config(&systemConf.piloto_conf);
+    //consigna_read_local_config(&systemConf.consigna_conf);
 
     save_config_in_NVM();    
     wan_state = WAN_ONLINE_DATA;
@@ -1123,6 +1127,134 @@ bool retS = false;
 			xprintf_P( PSTR("WAN:: Reconfig PILOTO SLOT %d\r\n"), slot);
 		}
 	}
+    retS = true;
+   
+exit_:
+                
+    return(retS);
+}
+//------------------------------------------------------------------------------
+static bool wan_process_frame_configConsigna(void)
+{
+    /*
+      * Envo un frame con el hash de la configuracion del consignas.
+      * El server me puede mandar OK o la nueva configuracion que debo tomar.
+      * Lo reintento 2 veces
+      */
+    
+uint8_t tryes = 0;
+uint8_t timeout = 0;
+bool retS = false;
+uint8_t hash = 0;
+
+    xprintf_P(PSTR("WAN:: CONFIG_CONSIGNA.\r\n"));
+ 
+    // Armo el buffer
+    while ( xSemaphoreTake( sem_WAN, MSTOTAKEWANSEMPH ) != pdTRUE )
+        vTaskDelay( ( TickType_t)( 1 ) );
+    memset(wan_tx_buffer, '\0', WAN_TX_BUFFER_SIZE);
+    hash = consigna_hash( u_hash );
+    sprintf_P( (char*)&wan_tx_buffer, PSTR("ID=%s&TYPE=%s&VER=%s&CLASS=CONF_CONSIGNA&HASH=0x%02X"), systemConf.dlgid, FW_TYPE, FW_REV, hash );
+
+    // Proceso. Envio hasta 2 veces el frame y espero hasta 10s la respuesta
+    tryes = 2;
+    while (tryes-- > 0) {
+        
+        wan_xmit_out(DEBUG_WAN);
+    
+        // Espero respuesta chequeando cada 1s durante 10s.
+        timeout = 10;
+        while ( timeout-- > 0) {
+            vTaskDelay( ( TickType_t)( 1000 / portTICK_PERIOD_MS ) );
+            if ( wan_check_response("CONFIG=ERROR")) {
+                xprintf_P(PSTR("WAN:: CONF_CONSIGNA ERROR: El servidor no reconoce al datalogger !!\r\n"));
+                retS = false;
+                goto exit_;
+            
+            } else if ( wan_check_response("CONF_CONSIGNA&CONFIG=OK")) {
+                wan_print_RXbuffer();
+                retS = true;
+                goto exit_;
+                
+            } else if ( wan_check_response( "CLASS=CONF_CONSIGNA" )) {
+                wan_print_RXbuffer();
+                wan_process_rsp_configConsigna();
+                retS = true;
+                goto exit_;
+            } 
+        }
+    }
+ 
+    // Expiro el tiempo sin respuesta del server.
+    xprintf_P(PSTR("WAN:: CONFIG_CONSIGNA ERROR: Timeout en server rsp.!!\r\n"));
+    retS = false;
+    
+exit_:
+               
+    xSemaphoreGive( sem_WAN );
+    return(retS);       
+}
+//------------------------------------------------------------------------------
+static bool wan_process_rsp_configConsigna(void)
+{
+   /*
+     * Procesa la configuracion de los canales Modbus
+     * RXFRAME: <html><body><h1>CLASS=CONF_CONSIGNA&ENABLE=TRUE&DIURNA=700&NOCTURNA=2300</h1></body></html>
+     *                          CLASS:CONF_CONSIGNA;CONFIG:OK
+     * 
+     */
+
+    
+char *ts = NULL;
+char localStr[48] = { 0 };
+char *stringp = NULL;
+char *tk_enable= NULL;
+char *tk_diurna= NULL;
+char *tk_nocturna= NULL;
+char *delim = "&,;:=><";
+char *p;
+bool retS = false;
+
+    p = lBchar_get_buffer(&wan_lbuffer);
+    
+    if  ( strstr( p, "CONFIG=OK") != NULL ) {
+        retS = true;
+       goto exit_;
+    }
+
+    vTaskDelay( ( TickType_t)( 10 / portTICK_PERIOD_MS ) );
+    memset(localStr,'\0',sizeof(localStr));
+	ts = strstr( p, "ENABLE=");
+    if  ( ts != NULL ) {
+        strncpy(localStr, ts, sizeof(localStr));
+        stringp = localStr;
+        tk_enable = strsep(&stringp,delim);	 	// ENABLE
+        tk_enable = strsep(&stringp,delim);	 	// TRUE/FALSE
+    }
+
+    vTaskDelay( ( TickType_t)( 10 / portTICK_PERIOD_MS ) );
+    memset(localStr,'\0',sizeof(localStr));
+	ts = strstr( p, "DIURNA=");
+    if  ( ts != NULL ) {
+        strncpy(localStr, ts, sizeof(localStr));
+        stringp = localStr;
+        tk_diurna = strsep(&stringp,delim);	 	// DIURNA
+        tk_diurna = strsep(&stringp,delim);	 	// 1500
+    }
+    
+    vTaskDelay( ( TickType_t)( 10 / portTICK_PERIOD_MS ) );
+    memset(localStr,'\0',sizeof(localStr));
+	ts = strstr( p, "NOCTURNA=");
+    if  ( ts != NULL ) {
+        strncpy(localStr, ts, sizeof(localStr));
+        stringp = localStr;
+        tk_nocturna = strsep(&stringp,delim);	 	
+        tk_nocturna = strsep(&stringp,delim);	 	
+    }
+    
+    consigna_config( tk_enable, tk_diurna, tk_nocturna);
+    
+	xprintf_P( PSTR("WAN:: Reconfig CONSIGNA\r\n"));
     retS = true;
    
 exit_:

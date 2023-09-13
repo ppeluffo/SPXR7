@@ -18,7 +18,8 @@ extern "C" {
 #include "stdint.h"
 #include "stdlib.h"
 #include "string.h"
-
+#include "stdio.h"
+    
 #include "xprintf.h"
 #include "drv8814.h"
 #include "steppers.h"

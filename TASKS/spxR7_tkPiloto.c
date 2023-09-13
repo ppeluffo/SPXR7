@@ -17,6 +17,10 @@ void tkPiloto(void * pvParameters)
      * valvula reguladora.
      * Impleentamos un modelo productor - consumidor.
      * 
+     * Si el piloto esta configurado, ejecuta esta tarea
+     * Solo si NO esta configurado y si la consigna, ejecuta la consigna.
+     * EL PILOTO TIENE PRIORIDAD !!
+     * 
      */
     
 ( void ) pvParameters;
@@ -37,11 +41,14 @@ void tkPiloto(void * pvParameters)
          */
 		vTaskDelay( ( TickType_t)( 30000 / portTICK_PERIOD_MS ) );
         
-        if ( ! piloto_configurado())
-            continue;
+        if ( systemConf.piloto_conf.enabled ) {
+            piloto_productor();
+            piloto_consumidor();
+            
+        } else if (systemConf.consigna_conf.enabled ) {
+            consigna_service();
+        }
         
-        piloto_productor();
-        piloto_consumidor();
 
 	}
 }

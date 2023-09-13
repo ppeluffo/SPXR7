@@ -41,8 +41,8 @@ uint16_t bitrateKHz = 100;
 
 	// El pin PE1(SCK) lo pongo como output.( master genera el reloj )
 	// No es necesario pero si se tranca el bus, debo clockearlo
-	IO_config_SCL();
-
+	CONFIG_SCL();
+    
 	// calculate bitrate division
 	bitrate_div = ((F_CPU / (2 * ( bitrateKHz * 1000) )) - 5);
 	TWIE.MASTER.BAUD = (uint8_t) bitrate_div;
@@ -78,15 +78,15 @@ uint8_t i = 0;
 	vTaskDelay( 5 );
 
 	// Clockeo el SCK varias veces para destrabar a los slaves
-	IO_config_SCL();
+	CONFIG_SCL();
 	for (i=0; i<10;i++) {
-		IO_set_SCL();
+		SET_SCL();
 		vTaskDelay( 1 );
-		IO_clr_SCL();
+		CLEAR_SCL();
 		vTaskDelay( 1 );
 	}
 	// Lo dejo en reposo alto
-	IO_set_SCL();
+	SET_SCL();
 
 	TWIE.MASTER.CTRLA |= ( 1<<TWI_MASTER_ENABLE_bp);	// Enable TWI
 

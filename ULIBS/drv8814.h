@@ -33,6 +33,9 @@ void DRV8814_pulse_Bmenos_Bmas(uint16_t dtime );
 //
 bool DRV8814_test( char *pinName, char *action);
 
+#define DRV8814_power_on()  ( SET_DRV8814_PWR )
+#define DRV8814_power_off() ( CLEAR_DRV8814_PWR )
+
 #ifdef	__cplusplus
 }
 #endif
